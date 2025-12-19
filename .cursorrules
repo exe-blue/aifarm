@@ -1,0 +1,70 @@
+# AIFarm Cursor Rules
+
+## 프로젝트 개요
+AIFarm은 600대 폰보드를 WiFi로 제어하는 자동화 시스템입니다.
+
+## 기술 스택
+- Python 3.11+
+- FastAPI + uvicorn
+- uiautomator2
+- Supabase (PostgreSQL)
+- YouTube Data API v3
+- asyncio (비동기 처리)
+
+## 코드 작성 규칙
+
+### Python 스타일
+- 타입 힌트 필수 사용
+- dataclass로 데이터 모델 정의
+- async/await 우선 사용
+- 로깅은 logging 모듈 사용 (print 금지)
+
+### 네이밍 규칙
+- 클래스: PascalCase (예: DeviceManager)
+- 함수/변수: snake_case (예: get_pending_tasks)
+- 상수: UPPER_SNAKE_CASE (예: MAX_DEVICES)
+- private: _prefix (예: _internal_method)
+
+### 주석
+- 모듈/클래스/함수에 docstring 작성
+- 주석은 한국어로 작성
+- 복잡한 로직에 인라인 주석 추가
+
+### 에러 처리
+- 커스텀 예외 클래스 사용 (src/core/exceptions.py)
+- try-except에서 구체적인 예외 타입 지정
+- tenacity로 재시도 로직 구현
+
+## 핵심 패턴
+
+### 태스크 등록
+```python
+@TaskRegistry.register("task_name")
+class MyTask(BaseTask):
+    async def execute(self, device) -> dict:
+        pass
+```
+
+### 600대 배치 처리
+```python
+for i in range(0, len(devices), batch_size):
+    batch = devices[i:i+batch_size]
+    results = await asyncio.gather(*[...], return_exceptions=True)
+```
+
+### Supabase 쿼리
+```python
+response = self.client.table("tasks").select("*").eq("status", "pending").execute()
+```
+
+## 주요 디렉토리
+- src/controller/ : 디바이스 제어
+- src/automation/ : 자동화 에이전트
+- src/modules/tasks/ : 태스크 모듈
+- src/trend/ : 트렌드 스나이퍼
+- src/youtube/ : YouTube API
+
+## 제약 사항
+- 600대 동시 처리 시 batch_size 50 이하 권장
+- YouTube API 일일 쿼터 10,000 units 제한
+- 하드코딩 금지 (환경 변수/config 사용)

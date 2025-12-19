@@ -20,6 +20,21 @@ supabase>=2.0.0
 # OpenAI (댓글 생성용)
 openai>=1.6.0
 
+# YouTube Data API (트렌드 스나이퍼)
+google-api-python-client>=2.111.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.0
+
+# 감성 분석 (트렌드 분석)
+textblob>=0.17.1
+
+# 워드클라우드 (트렌드 시각화)
+wordcloud>=1.9.3
+
+# 스케줄링 (트렌드 자동 감지)
+schedule>=1.2.1
+APScheduler>=3.10.4
+
 # Utilities
 tenacity>=8.2.3
 
