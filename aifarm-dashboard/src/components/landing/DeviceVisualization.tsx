@@ -73,33 +73,49 @@ export function DeviceVisualization() {
 
             {/* Device Grid */}
             <div className="grid grid-cols-30 gap-[2px] max-w-4xl mx-auto">
-              {mockDevices.slice(0, 600).map((device, i) => (
-                <motion.div
-                  key={device.id}
-                  className={`w-2 h-2 rounded-sm ${
-                    device.status === 'active' ? 'bg-green-500' :
-                    device.status === 'idle' ? 'bg-yellow-500/60' :
-                    device.status === 'error' ? 'bg-red-500' :
-                    'bg-gray-600'
-                  }`}
-                  initial={{ opacity: 0, scale: 0 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ 
-                    duration: 0.1, 
-                    delay: Math.min(i * 0.001, 0.5) 
-                  }}
-                  whileHover={{ 
-                    scale: 2, 
-                    zIndex: 10,
-                    boxShadow: device.status === 'active' 
-                      ? '0 0 10px rgba(34, 197, 94, 0.8)'
-                      : device.status === 'error'
-                      ? '0 0 10px rgba(239, 68, 68, 0.8)'
-                      : '0 0 10px rgba(234, 179, 8, 0.8)'
-                  }}
-                />
-              ))}
+              {mockDevices.slice(0, 600).map((device, i) => {
+                const getDeviceClassName = (status: string) => {
+                  if (status === 'online') {
+                    return 'bg-green-500';
+                  }
+                  if (status === 'temp_high' || status === 'wrong_mode') {
+                    return 'bg-yellow-500/60';
+                  }
+                  if (status === 'disconnected' || status === 'unstable') {
+                    return 'bg-red-500';
+                  }
+                  return 'bg-gray-600';
+                };
+
+                const getDeviceBoxShadow = (status: string) => {
+                  if (status === 'online') {
+                    return '0 0 10px rgba(34, 197, 94, 0.8)';
+                  }
+                  if (status === 'disconnected' || status === 'unstable') {
+                    return '0 0 10px rgba(239, 68, 68, 0.8)';
+                  }
+                  return '0 0 10px rgba(234, 179, 8, 0.8)';
+                };
+
+                return (
+                  <motion.div
+                    key={device.id}
+                    className={`w-2 h-2 rounded-sm ${getDeviceClassName(device.status)}`}
+                    initial={{ opacity: 0, scale: 0 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{
+                      duration: 0.1,
+                      delay: Math.min(i * 0.001, 0.5)
+                    }}
+                    whileHover={{
+                      scale: 2,
+                      zIndex: 10,
+                      boxShadow: getDeviceBoxShadow(device.status)
+                    }}
+                  />
+                );
+              })}
             </div>
 
             {/* Legend */}
@@ -132,9 +148,9 @@ export function DeviceVisualization() {
           </h3>
           <div className="grid grid-cols-5 md:grid-cols-10 lg:grid-cols-15 gap-2 max-w-4xl mx-auto">
             {Array.from({ length: 30 }, (_, i) => {
-              const boardDevices = mockDevices.filter(d => d.phoneBoardId === i + 1);
-              const activeCount = boardDevices.filter(d => d.status === 'active').length;
-              const errorCount = boardDevices.filter(d => d.status === 'error').length;
+              const boardDevices = mockDevices.filter(d => d.board_id === i + 1);
+              const activeCount = boardDevices.filter(d => d.status === 'online').length;
+              const errorCount = boardDevices.filter(d => d.status === 'disconnected' || d.status === 'unstable').length;
               
               return (
                 <motion.div

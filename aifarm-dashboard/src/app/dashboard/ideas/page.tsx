@@ -5,6 +5,19 @@ import { motion } from 'framer-motion';
 import { GlowCard } from '@/components/common/GlowCard';
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
 import { mockRemixIdeas, mockTrendingShorts } from '@/data/mock';
+
+type TrendingShortsItem = {
+  id: string;
+  videoId: string;
+  title: string;
+  channelName: string;
+  viewCount: number;
+  viralScore: number;
+  viralFactors: string[];
+  musicTitle?: string;
+  hashtags: string[];
+  detectedAt: string;
+};
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -23,7 +36,7 @@ import {
   Play
 } from 'lucide-react';
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
   approved: 'bg-green-500/20 text-green-400 border-green-500/30',
   in_production: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
@@ -31,7 +44,7 @@ const statusColors = {
   rejected: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
-const directionLabels = {
+const directionLabels: Record<string, string> = {
   parody: '패러디',
   mashup: '매시업',
   localization: '현지화',
@@ -198,8 +211,8 @@ export default function IdeasPage() {
               <div className="mt-6 pt-4 border-t border-border/50">
                 <h3 className="text-sm font-medium mb-3">소스 Shorts</h3>
                 <div className="space-y-2">
-                  {selectedIdea.sourceShorts.map((shorts, i) => (
-                    <div key={i} className="p-3 rounded-lg bg-background/50 flex items-center gap-3">
+                  {selectedIdea.sourceShorts.map((shorts: { title: string; channelName: string; viewCount: number; videoId: string }, i: number) => (
+                    <div key={shorts.videoId || i} className="p-3 rounded-lg bg-background/50 flex items-center gap-3">
                       <div className="w-16 h-9 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded flex items-center justify-center">
                         <Play className="w-4 h-4" />
                       </div>
@@ -232,7 +245,7 @@ export default function IdeasPage() {
           <Badge variant="secondary">{mockTrendingShorts.length} detected</Badge>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {mockTrendingShorts.map((shorts, i) => (
+          {mockTrendingShorts.map((shorts: TrendingShortsItem, i: number) => (
             <motion.div
               key={shorts.id}
               initial={{ opacity: 0, y: 20 }}

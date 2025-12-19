@@ -20,7 +20,7 @@ import {
   Play
 } from 'lucide-react';
 
-const lifecycleColors = {
+const lifecycleColors: Record<string, string> = {
   birth: 'bg-green-500/20 text-green-400 border-green-500/30',
   growth: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
   peak: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
@@ -28,7 +28,7 @@ const lifecycleColors = {
   dead: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
-const lifecycleLabels = {
+const lifecycleLabels: Record<string, string> = {
   birth: '탄생기',
   growth: '성장기',
   peak: '피크',
@@ -86,18 +86,19 @@ export default function TrendsPage() {
 
           {/* Challenges Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mockChallenges.map((challenge, i) => (
-              <motion.div
-                key={challenge.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-              >
-                <GlowCard 
-                  glowColor={challenge.lifecycleStage === 'birth' ? 'green' : 
-                             challenge.lifecycleStage === 'growth' ? 'cyan' : 
-                             challenge.lifecycleStage === 'peak' ? 'yellow' : 'orange'}
+            {mockChallenges.map((challenge, i) => {
+              const glowColor = challenge.lifecycleStage === 'birth' ? 'green' :
+                               challenge.lifecycleStage === 'growth' ? 'cyan' :
+                               challenge.lifecycleStage === 'peak' ? 'yellow' : 'orange';
+
+              return (
+                <motion.div
+                  key={challenge.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
                 >
+                  <GlowCard glowColor={glowColor}>
                   <div className="flex items-start justify-between mb-3">
                     <Badge className={lifecycleColors[challenge.lifecycleStage]} variant="outline">
                       {lifecycleLabels[challenge.lifecycleStage]}
@@ -113,8 +114,8 @@ export default function TrendsPage() {
                   <h3 className="font-bold text-lg mb-2">{challenge.name}</h3>
                   
                   <div className="flex flex-wrap gap-1 mb-3">
-                    {challenge.hashtags.map((tag, j) => (
-                      <Badge key={j} variant="secondary" className="text-[10px]">
+                    {challenge.hashtags.map((tag: string, j: number) => (
+                      <Badge key={`${challenge.id}-tag-${j}`} variant="secondary" className="text-[10px]">
                         {tag}
                       </Badge>
                     ))}
@@ -154,7 +155,8 @@ export default function TrendsPage() {
                   </Button>
                 </GlowCard>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </TabsContent>
 
@@ -213,8 +215,8 @@ export default function TrendsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-1 mb-3">
-                    {persona.interests.map((interest, j) => (
-                      <Badge key={j} variant="outline" className="text-[10px]">
+                    {persona.interests.map((interest: string, j: number) => (
+                      <Badge key={`${persona.id}-interest-${j}`} variant="outline" className="text-[10px]">
                         {interest}
                       </Badge>
                     ))}
@@ -293,8 +295,8 @@ export default function TrendsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-1 mb-3">
-                    {theme.moodTags.map((tag, j) => (
-                      <Badge key={j} variant="outline" className="text-[10px]">
+                    {theme.moodTags.map((tag: string, j: number) => (
+                      <Badge key={`${theme.id}-tag-${j}`} variant="outline" className="text-[10px]">
                         {tag}
                       </Badge>
                     ))}
@@ -309,8 +311,8 @@ export default function TrendsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-1">
-                    {theme.searchKeywords.map((keyword, j) => (
-                      <Badge key={j} variant="secondary" className="text-[10px]">
+                    {theme.searchKeywords.map((keyword: string, j: number) => (
+                      <Badge key={`${theme.id}-keyword-${j}`} variant="secondary" className="text-[10px]">
                         🔍 {keyword}
                       </Badge>
                     ))}

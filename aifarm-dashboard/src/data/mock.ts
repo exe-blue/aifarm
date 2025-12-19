@@ -1,18 +1,142 @@
-import type {
-  Activity,
-  Channel,
-  Competitor,
-  Quest,
-  BattleLogEntry,
-  TrendingShorts,
-  RemixIdea,
-  Challenge,
-  Persona,
-  PlaylistTheme,
-  DashboardStats,
-  Notification,
-  Device,
-} from '@/types';
+import type { Device } from '@/types';
+
+// Mock types (not in types/index.ts)
+type Activity = {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  color: string;
+  allocatedDevices: number;
+  activeDevices: number;
+  itemsProcessedToday: number;
+  successRate: number;
+};
+
+type Channel = {
+  id: string;
+  name: string;
+  thumbnail: string;
+  subscribers: string;
+  totalViews: string;
+  avgViews: string;
+  level: number;
+  exp: number;
+  expToNextLevel: number;
+  rank: number;
+  rankChange: number;
+  tags: string[];
+  subscribers_count: number;
+  total_views: number;
+  avg_views: number;
+  subscribers_gained_today: number;
+  views_today: number;
+  globalRank: number;
+  categoryRank: number;
+  weeklyViews: number;
+  weeklyRankChange: number;
+  winStreak: number;
+  category: string;
+  monthlyStats: {
+    totalViews: number;
+    peakViews: number;
+    avgDailyViews: number;
+  };
+};
+
+type BattleLogEntry = {
+  id: string;
+  eventType: string;
+  channelName: string;
+  channelThumbnail: string;
+  description: string;
+  impact: number;
+  createdAt: string;
+  ourChannelName?: string;
+  impactScore?: number;
+  details?: Record<string, unknown>;
+};
+
+type TrendingShorts = {
+  id: string;
+  videoId: string;
+  title: string;
+  channelName: string;
+  viewCount: number;
+  viralScore: number;
+  viralFactors: string[];
+  musicTitle?: string;
+  hashtags: string[];
+  detectedAt: string;
+};
+
+type RemixIdea = {
+  id: string;
+  sourceShorts: TrendingShorts[];
+  title: string;
+  conceptDescription: string;
+  differentiationPoint: string;
+  remixDirection: string;
+  recommendedMusic: string;
+  estimatedViralProbability: number;
+  status: string;
+  createdAt: string;
+};
+
+type Challenge = {
+  id: string;
+  name: string;
+  hashtags: string[];
+  musicTitle?: string;
+  originatorChannel?: string;
+  lifecycleStage: string;
+  totalParticipants: number;
+  dailyNewParticipants: number;
+  avgViewCount: number;
+  isActive: boolean;
+  firstDetectedAt: string;
+  opportunityScore: number;
+  ourParticipation?: {
+    channelName: string;
+    videoId: string;
+    views: number;
+    rank: number;
+  };
+};
+
+type Persona = {
+  id: string;
+  name: string;
+  age: number;
+  interests: string[];
+  toneDescription: string;
+  sampleComments: string[];
+  isActive: boolean;
+  commentsToday: number;
+  engagementRate: number;
+};
+
+type PlaylistTheme = {
+  id: string;
+  themeName: string;
+  themeDescription: string;
+  searchKeywords: string[];
+  moodTags: string[];
+  targetVideoCount: number;
+  currentVideoCount: number;
+  status: string;
+  themeDate: string;
+};
+
+type Notification = {
+  id: string;
+  type: string;
+  sourceActivity: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+};
 
 export const mockActivities: Activity[] = [
   {
@@ -247,7 +371,7 @@ export const mockPlaylistThemes: PlaylistTheme[] = [
   { id: '2', themeName: '월요일 아침 기분전환 EDM', themeDescription: '활기찬 한 주의 시작을 위한 업비트 EDM', searchKeywords: ['EDM', '아침', '기분전환', 'upbeat'], moodTags: ['에너지', '활기', '동기부여'], targetVideoCount: 20, currentVideoCount: 20, status: 'completed', themeDate: new Date().toISOString() },
 ];
 
-export const mockDashboardStats: DashboardStats = {
+export const mockDashboardStats = {
   totalDevices: 600,
   activeDevices: 546,
   idleDevices: 42,

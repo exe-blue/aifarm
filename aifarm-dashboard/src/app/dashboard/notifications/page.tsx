@@ -18,7 +18,7 @@ import {
   XCircle
 } from 'lucide-react';
 
-const typeConfig = {
+const typeConfig: Record<string, { icon: typeof AlertTriangle; color: string }> = {
   alert: { icon: AlertTriangle, color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30' },
   info: { icon: Info, color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' },
   warning: { icon: AlertTriangle, color: 'text-orange-400 bg-orange-500/10 border-orange-500/30' },

@@ -246,6 +246,7 @@ export default function ChannelsPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-zinc-500 hover:text-white"
+                          aria-label={`${channel.channel_name} 채널 열기 (새 탭)`}
                         >
                           <ExternalLink className="w-4 h-4" />
                         </a>

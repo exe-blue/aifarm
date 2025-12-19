@@ -1,370 +1,226 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { useStats, useActivities, useDORequests, useDeviceIssues, useNotifications } from '@/hooks/useApi';
 import { 
   Smartphone, 
-  Youtube, 
-  PlayCircle, 
-  Activity,
   AlertTriangle,
+  Play,
+  Wrench,
+  Activity,
   CheckCircle,
   Clock,
-  TrendingUp,
-  ArrowRight,
-  RefreshCw,
+  XCircle,
+  Loader2
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { DEVICE_STATUS_CONFIG, BOARD_CONFIG } from '@/data/constants';
-import type { DeviceStatus } from '@/types';
-
-// 모의 데이터 (실제로는 API에서 가져옴)
-const mockStats = {
-  devices: {
-    total: 600,
-    online: 423,
-    temp_high: 12,
-    wrong_mode: 8,
-    disconnected: 142,
-    unstable: 15,
-  },
-  boards: {
-    total: 30,
-    connected: 11,
-    disconnected: 19,
-  },
-  watchRequests: {
-    pending: 3,
-    inProgress: 2,
-    completedToday: 15,
-    totalViewsToday: 4523,
-  },
-  idleActivities: {
-    activeCount: 5,
-    totalTasksToday: 12456,
-    avgSuccessRate: 91.5,
-  },
-  channels: {
-    total: 10,
-    totalViewsToday: 34567,
-    totalSubscribersChange: 127,
-  },
-};
-
-// 진행 중인 요청 모의 데이터
-const mockActiveRequests = [
-  {
-    id: '1',
-    videoTitle: '2024년 재테크 전략 총정리',
-    keywords: ['재테크', '주식투자', '경제뉴스', '부동산', '금융'],
-    progress: 67,
-    targetViews: 100,
-    completedViews: 67,
-    likeRate: 30,
-    commentRate: 10,
-    startedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '2',
-    videoTitle: '신작 게임 플레이 리뷰',
-    keywords: ['게임리뷰', '신작게임', '플레이영상', '공략', '팁'],
-    progress: 28,
-    targetViews: 100,
-    completedViews: 28,
-    likeRate: 50,
-    commentRate: 20,
-    startedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-  },
-];
+import { Button } from '@/components/ui/button';
 
 export default function DashboardPage() {
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { data: statsData, isLoading: statsLoading } = useStats();
+  const { data: activitiesData, isLoading: activitiesLoading } = useActivities();
+  const { data: doRequestsData, isLoading: doLoading } = useDORequests({ limit: 5 });
+  const { data: issuesData, isLoading: issuesLoading } = useDeviceIssues({ resolved: false });
+  const { data: notificationsData } = useNotifications(true);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 1000);
-  };
+  const stats = statsData?.devices || { total: 600, active: 6, idle: 0, error: 394 };
+  const activities = activitiesData?.activities || [];
+  const doRequests = doRequestsData?.requests || [];
+  const issues = issuesData?.issues || [];
+  const unreadCount = notificationsData?.notifications?.length || 0;
 
-  // 디바이스 상태별 카운트 배열 생성
-  const deviceStatusCounts = Object.entries(mockStats.devices)
-    .filter(([key]) => key !== 'total')
-    .map(([status, count]) => ({
-      status: status as DeviceStatus,
-      count,
-      config: DEVICE_STATUS_CONFIG[status as DeviceStatus],
-    }));
+  const pendingRequests = doRequests.filter((r: any) => r.status === 'pending').length;
+  const inProgressRequests = doRequests.filter((r: any) => r.status === 'in_progress').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">대시보드</h1>
-          <p className="text-zinc-400 text-sm">AIFarm 시스템 전체 현황</p>
+          <h1 className="text-2xl font-bold">대시보드</h1>
+          <p className="text-sm text-muted-foreground">AIFarm 시스템 현황</p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleRefresh}
-          className="w-fit border-zinc-700 hover:bg-zinc-800"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-          새로고침
-        </Button>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+          </span>
+          <span className="text-muted-foreground">온라인</span>
+        </div>
       </div>
 
-      {/* 디바이스 상태 요약 */}
-      <Card className="bg-zinc-900 border-zinc-800">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Smartphone className="w-5 h-5 text-cyan-400" />
-              디바이스 현황
-            </CardTitle>
-            <Link href="/dashboard/devices">
-              <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
-                전체보기 <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Link>
+      {/* Device Status Bar */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="grid grid-cols-3 gap-4 p-4 rounded-lg bg-card border"
+      >
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <Smartphone className="w-4 h-4 text-green-400" />
+            <span className="text-2xl font-bold text-green-400">{stats.active}</span>
+            <span className="text-muted-foreground">/ {stats.total}</span>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {deviceStatusCounts.map(({ status, count, config }) => (
-              <div 
-                key={status}
-                className={`p-3 rounded-lg border ${config.bgColor} ${config.borderColor}`}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span>{config.icon}</span>
-                  <span className={`text-xs font-medium ${config.color}`}>{config.label}</span>
+          <span className="text-xs text-muted-foreground">연결됨</span>
+        </div>
+        <div className="text-center border-x border-border">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <AlertTriangle className="w-4 h-4 text-red-400" />
+            <span className="text-2xl font-bold text-red-400">{stats.error}</span>
+          </div>
+          <span className="text-xs text-muted-foreground">장애</span>
+        </div>
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <Clock className="w-4 h-4 text-yellow-400" />
+            <span className="text-2xl font-bold text-yellow-400">{stats.idle}</span>
+          </div>
+          <span className="text-xs text-muted-foreground">대기</span>
+        </div>
+      </motion.div>
+
+      {/* Main Action - Video Watch Request */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <Link href="/dashboard/watch">
+          <div className="p-6 rounded-lg bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 hover:border-cyan-500/50 transition-all cursor-pointer group">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-lg bg-cyan-500/20">
+                  <Play className="w-8 h-8 text-cyan-400" />
                 </div>
-                <div className={`text-2xl font-bold ${config.color}`}>{count}</div>
+                <div>
+                  <h2 className="text-xl font-bold text-cyan-400 group-hover:text-cyan-300 transition-colors">
+                    영상 시청 요청
+                  </h2>
+                  <p className="text-sm text-muted-foreground">YouTube 트래픽 생성</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Loader2 className="w-3 h-3 text-yellow-400 animate-spin" />
+                    <span>진행 중: {inProgressRequests}건</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    <span>대기: {pendingRequests}건</span>
+                  </div>
+                </div>
+                <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+                  MAIN
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </Link>
+      </motion.div>
+
+      {/* 6대 Activities Summary */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="p-4 rounded-lg bg-card border"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            6대 활동
+          </h3>
+          <Link href="/dashboard/activities">
+            <Button variant="ghost" size="sm" className="text-xs">
+              전체보기
+            </Button>
+          </Link>
+        </div>
+        
+        {activitiesLoading ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+            {(activities.length > 0 ? activities : [
+              { id: 'shorts_remix', name: 'Shorts 리믹스', icon: '🎬', active_devices: 0, allocated_devices: 0 },
+              { id: 'playlist_curator', name: 'AI DJ', icon: '🎵', active_devices: 0, allocated_devices: 0 },
+              { id: 'persona_commenter', name: '코멘터', icon: '💬', active_devices: 0, allocated_devices: 0 },
+              { id: 'trend_scout', name: '스카우터', icon: '🕵️', active_devices: 0, allocated_devices: 0 },
+              { id: 'challenge_hunter', name: '챌린지', icon: '🏅', active_devices: 0, allocated_devices: 0 },
+              { id: 'thumbnail_lab', name: '썸네일', icon: '🔬', active_devices: 0, allocated_devices: 0 },
+            ]).slice(0, 6).map((activity: any) => (
+              <div 
+                key={activity.id}
+                className="text-center p-3 rounded-lg bg-background/50 border border-border/50"
+              >
+                <span className="text-2xl">{activity.icon}</span>
+                <div className="text-xs font-medium mt-1 truncate">{activity.name?.split(' ')[0]}</div>
+                <div className="text-xs text-muted-foreground">
+                  {activity.active_devices || 0}/{activity.allocated_devices || 0}
+                </div>
               </div>
             ))}
           </div>
-          <div className="mt-4 flex items-center gap-4 text-sm text-zinc-400">
-            <span>총 {mockStats.devices.total}대</span>
-            <span>•</span>
-            <span>보드 {mockStats.boards.connected}/{mockStats.boards.total}개 연결</span>
-          </div>
-        </CardContent>
-      </Card>
+        )}
+      </motion.div>
 
-      {/* 주요 지표 그리드 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* 시청 요청 현황 */}
-        <Card className="bg-zinc-900 border-zinc-800">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <PlayCircle className="w-5 h-5 text-cyan-400" />
-                시청 요청
-              </CardTitle>
-              <Link href="/dashboard/watch">
-                <Button variant="ghost" size="sm" className="h-7 text-xs text-zinc-400 hover:text-white">
-                  관리 →
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-400 text-sm">진행중</span>
-                <Badge className="bg-yellow-500/20 text-yellow-400 border-0">
-                  {mockStats.watchRequests.inProgress}건
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-400 text-sm">대기중</span>
-                <span className="text-white font-medium">{mockStats.watchRequests.pending}건</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-400 text-sm">오늘 완료</span>
-                <span className="text-green-400 font-medium">{mockStats.watchRequests.completedToday}건</span>
-              </div>
-              <div className="pt-2 border-t border-zinc-800">
-                <div className="flex justify-between items-center">
-                  <span className="text-zinc-400 text-sm">오늘 총 조회수</span>
-                  <span className="text-cyan-400 font-bold text-lg">
-                    {mockStats.watchRequests.totalViewsToday.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 유휴 활동 현황 */}
-        <Card className="bg-zinc-900 border-zinc-800">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Activity className="w-5 h-5 text-purple-400" />
-                유휴 활동
-              </CardTitle>
-              <Link href="/dashboard/idle">
-                <Button variant="ghost" size="sm" className="h-7 text-xs text-zinc-400 hover:text-white">
-                  관리 →
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-400 text-sm">활성 활동</span>
-                <Badge className="bg-purple-500/20 text-purple-400 border-0">
-                  {mockStats.idleActivities.activeCount}/6
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-400 text-sm">오늘 작업</span>
-                <span className="text-white font-medium">
-                  {mockStats.idleActivities.totalTasksToday.toLocaleString()}건
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-400 text-sm">평균 성공률</span>
-                <span className="text-green-400 font-medium">
-                  {mockStats.idleActivities.avgSuccessRate}%
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 채널 현황 */}
-        <Card className="bg-zinc-900 border-zinc-800">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Youtube className="w-5 h-5 text-red-400" />
-                채널 현황
-              </CardTitle>
-              <Link href="/dashboard/channels">
-                <Button variant="ghost" size="sm" className="h-7 text-xs text-zinc-400 hover:text-white">
-                  관리 →
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-400 text-sm">관리 채널</span>
-                <span className="text-white font-medium">{mockStats.channels.total}개</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-400 text-sm">오늘 조회수</span>
-                <span className="text-white font-medium">
-                  {mockStats.channels.totalViewsToday.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-400 text-sm">구독자 변화</span>
-                <span className="text-green-400 font-medium flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
-                  +{mockStats.channels.totalSubscribersChange}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 진행 중인 시청 요청 */}
-      {mockActiveRequests.length > 0 && (
-        <Card className="bg-zinc-900 border-zinc-800">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Clock className="w-5 h-5 text-yellow-400" />
-              진행중인 시청 요청
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {mockActiveRequests.map((request) => {
-                const minutesAgo = Math.round((Date.now() - new Date(request.startedAt).getTime()) / 60000);
-                
-                return (
-                  <div key={request.id} className="p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
-                      <div>
-                        <h4 className="font-medium text-white">{request.videoTitle}</h4>
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {request.keywords.map((keyword, idx) => (
-                            <Badge key={idx} variant="secondary" className="bg-zinc-700 text-zinc-300 text-xs">
-                              {keyword}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-zinc-400">
-                        <span>좋아요 {request.likeRate}%</span>
-                        <span>•</span>
-                        <span>댓글 {request.commentRate}%</span>
-                        <span>•</span>
-                        <span>{minutesAgo}분 전 시작</span>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-zinc-400">진행률</span>
-                        <span className="text-cyan-400 font-medium">
-                          {request.completedViews}/{request.targetViews} ({request.progress}%)
-                        </span>
-                      </div>
-                      <Progress value={request.progress} className="h-2" />
-                    </div>
+      {/* Maintenance Alert */}
+      {stats.error > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Link href="/dashboard/maintenance">
+            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 hover:border-red-500/50 transition-all cursor-pointer">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Wrench className="w-5 h-5 text-red-400" />
+                  <div>
+                    <span className="font-medium text-red-400">장치 점검 필요</span>
+                    <p className="text-xs text-muted-foreground">
+                      Board 1~19 미연결 (380대), Board 20 장애 (14대)
+                    </p>
                   </div>
-                );
-              })}
+                </div>
+                <Badge variant="destructive">{stats.error}대</Badge>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </Link>
+        </motion.div>
       )}
 
-      {/* 시스템 알림 */}
-      <Card className="bg-zinc-900 border-zinc-800">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-orange-400" />
-            시스템 알림
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
-              <AlertTriangle className="w-4 h-4 text-orange-400 shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm text-orange-400">보드 1~19 연결 끊김</p>
-                <p className="text-xs text-zinc-500">19개 보드 (380대 디바이스) 미연결 상태</p>
-              </div>
-              <Badge className="bg-orange-500/20 text-orange-400 border-0">19개</Badge>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
-              <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm text-yellow-400">온도 주의 디바이스</p>
-                <p className="text-xs text-zinc-500">12대 기기 온도 45°C 초과</p>
-              </div>
-              <Badge className="bg-yellow-500/20 text-yellow-400 border-0">12대</Badge>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-              <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm text-green-400">보드 20 정상 작동</p>
-                <p className="text-xs text-zinc-500">6대 디바이스 정상 연결</p>
-              </div>
-            </div>
+      {/* Connected Devices Info */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="p-4 rounded-lg bg-green-500/5 border border-green-500/20"
+      >
+        <div className="flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-400" />
+          <div>
+            <span className="font-medium text-green-400">정상 작동 디바이스</span>
+            <p className="text-xs text-muted-foreground">
+              Board 20: 20-1 ~ 20-6 (6대) - WiFi 연결 완료
+            </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </motion.div>
+
+      {/* Quick Stats Footer */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="text-xs text-muted-foreground text-center pt-4 border-t"
+      >
+        가용 에이전트: {stats.active}대 | 최대 동시 실행: {Math.min(stats.active, 50)}대
+      </motion.div>
     </div>
   );
 }

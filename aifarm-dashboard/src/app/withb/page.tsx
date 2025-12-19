@@ -546,19 +546,14 @@ export default function WithBLanding() {
                   </div>
                 </div>
                 {[
-                  { label: "알림 클릭", angle: -45 },
-                  { label: "재방문 시청", angle: 45 },
-                  { label: "공유/저장", angle: 135 },
-                  { label: "댓글 참여", angle: 225 },
+                  { label: "알림 클릭", position: "top-[18%] left-[82%]" },
+                  { label: "재방문 시청", position: "top-[82%] left-[82%]" },
+                  { label: "공유/저장", position: "top-[82%] left-[18%]" },
+                  { label: "댓글 참여", position: "top-[18%] left-[18%]" },
                 ].map((item, i) => (
                   <div 
                     key={i}
-                    className="absolute text-sm text-zinc-400"
-                    style={{
-                      top: `${50 + 45 * Math.sin(item.angle * Math.PI / 180)}%`,
-                      left: `${50 + 45 * Math.cos(item.angle * Math.PI / 180)}%`,
-                      transform: 'translate(-50%, -50%)'
-                    }}
+                    className={`absolute text-sm text-zinc-400 -translate-x-1/2 -translate-y-1/2 ${item.position}`}
                   >
                     {item.label}
                   </div>

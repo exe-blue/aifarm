@@ -7,7 +7,7 @@ import { ko } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TrendingUp, TrendingDown, Flame, Target, Trophy, Swords } from 'lucide-react';
 
-const eventIcons = {
+const eventIcons: Record<string, typeof Flame> = {
   viral_hit: Flame,
   rank_up: TrendingUp,
   rank_down: TrendingDown,
@@ -16,7 +16,7 @@ const eventIcons = {
   challenge_join: Swords,
 };
 
-const eventColors = {
+const eventColors: Record<string, string> = {
   viral_hit: 'text-orange-400 bg-orange-500/10 border-orange-500/30',
   rank_up: 'text-green-400 bg-green-500/10 border-green-500/30',
   rank_down: 'text-red-400 bg-red-500/10 border-red-500/30',
@@ -38,8 +38,7 @@ export function BattleLogPreview() {
           className="text-center mb-12"
         >
           <h2
-            className="text-3xl md:text-5xl font-bold mb-4"
-            style={{ fontFamily: 'var(--font-display)' }}
+            className="text-3xl md:text-5xl font-bold mb-4 font-display"
           >
             <span className="text-foreground">배틀 </span>
             <span className="text-orange-400" style={{ textShadow: '0 0 20px rgba(251, 146, 60, 0.5)' }}>
