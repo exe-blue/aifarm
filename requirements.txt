@@ -1,0 +1,18 @@
+# Core
+uiautomator2>=2.16.25
+fastapi>=0.104.1
+uvicorn>=0.24.0
+pydantic>=2.5.0
+pyyaml>=6.0.1
+aiohttp>=3.9.0
+python-dotenv>=1.0.0
+
+# Google Sheets
+gspread>=5.12.0
+google-auth>=2.25.0
+
+# Supabase
+supabase>=2.0.0
+
+# Utilities
+tenacity>=8.2.3

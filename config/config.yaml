@@ -1,0 +1,71 @@
+# AIFarm Configuration
+
+# Device Network Settings
+network:
+  base_ips:
+    - subnet: "10.0.10"
+      range: [1, 254]  # 254 devices
+    - subnet: "10.0.11"
+      range: [1, 254]  # 254 devices
+    - subnet: "10.0.12"
+      range: [1, 93]   # 92 devices
+  port: 5555
+  connection_timeout: 5
+  max_workers: 50
+
+# ADB Settings
+adb:
+  path: "adb"  # Use system ADB or specify full path
+  connect_timeout: 10
+  command_timeout: 30
+
+# Automation Settings
+automation:
+  default_wait_timeout: 5
+  screenshot_enabled: true
+  screenshot_path: "screenshots"
+
+# Execution Engine Settings
+execution:
+  batch_size: 50
+  batch_delay: 1.0
+  retry_count: 3
+
+# API Settings
+api:
+  host: "0.0.0.0"
+  port: 8000
+  title: "AIFarm API"
+  version: "1.0.0"
+
+# YouTube Automation
+youtube:
+  keywords:
+    - "AI 뉴스"
+    - "기술 트렌드"
+    - "파이썬 강의"
+    - "자동화 시스템"
+    - "클라우드 서비스"
+  comments:
+    - "좋은 영상 감사합니다!"
+    - "정말 유익하네요"
+    - "구독하고 갑니다"
+    - "잘 봤습니다!"
+    - "최고예요!"
+  watch_time_range: [30, 120]  # seconds
+  like_probability: 0.5
+  comment_probability: 0.2
+
+# Google Sheets Settings
+google_sheets:
+  credentials_path: "config/google_credentials.json"
+  # sheet_url: "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID"
+  keywords_worksheet: "keywords"
+  comments_worksheet: "comments"
+  results_worksheet: "results"
+
+# Supabase Settings
+supabase:
+  # url: "https://YOUR_PROJECT.supabase.co"
+  # key: "YOUR_ANON_KEY"
+  daemon_interval: 30  # seconds
