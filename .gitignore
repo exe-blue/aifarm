@@ -47,7 +47,11 @@ Thumbs.db
 
 # Project specific
 screenshots/
-*.png
-*.jpg
 config/local.yaml
+
+# 검증 스크린샷 (폴더는 유지, 이미지만 제외)
+verification/log/*.png
+verification/log/*.jpg
+verification/log/*.json
+!verification/log/.gitkeep
 

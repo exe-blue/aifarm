@@ -29,7 +29,15 @@ import {
   TrendingUp,
   Users,
   Lightbulb,
+  Power,
+  Loader2,
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 // 아이콘 매핑
 const iconMap = {
@@ -104,6 +112,55 @@ export default function DashboardLayout({
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['management', 'tasks', 'analysis', 'idle']);
+  
+  // 자동화 시스템 상태
+  const [automationStatus, setAutomationStatus] = useState<'idle' | 'starting' | 'running' | 'stopping'>('idle');
+  const [activeDevices, setActiveDevices] = useState(0);
+  
+  // 전원 버튼 클릭 핸들러
+  const handlePowerToggle = async () => {
+    if (automationStatus === 'running') {
+      // 시스템 중지
+      setAutomationStatus('stopping');
+      try {
+        const response = await fetch('/api/automation/stop', { method: 'POST' });
+        if (response.ok) {
+          setAutomationStatus('idle');
+          setActiveDevices(0);
+        }
+      } catch (error) {
+        console.error('자동화 중지 실패:', error);
+        setAutomationStatus('running');
+      }
+    } else if (automationStatus === 'idle') {
+      // 시스템 시작
+      setAutomationStatus('starting');
+      try {
+        const response = await fetch('/api/automation/start', { method: 'POST' });
+        if (response.ok) {
+          const data = await response.json();
+          setAutomationStatus('running');
+          setActiveDevices(data.active_devices || 6);
+        }
+      } catch (error) {
+        console.error('자동화 시작 실패:', error);
+        setAutomationStatus('idle');
+      }
+    }
+  };
+  
+  // 전원 버튼 색상
+  const getPowerButtonStyle = () => {
+    switch (automationStatus) {
+      case 'running':
+        return 'bg-green-500 hover:bg-green-600 text-white shadow-[0_0_20px_rgba(34,197,94,0.5)]';
+      case 'starting':
+      case 'stopping':
+        return 'bg-yellow-500 hover:bg-yellow-600 text-white animate-pulse';
+      default:
+        return 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300';
+    }
+  };
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories(prev => 
@@ -350,6 +407,53 @@ export default function DashboardLayout({
           collapsed ? "lg:pl-[72px]" : "lg:pl-[260px]"
         )}
       >
+        {/* Top Header with Power Button */}
+        <div className="hidden lg:flex h-14 items-center justify-end px-6 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-30">
+          <div className="flex items-center gap-4">
+            {/* 상태 표시 */}
+            {automationStatus === 'running' && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                <span className="text-green-400">{activeDevices}대 활동중</span>
+              </div>
+            )}
+            
+            {/* 전원 버튼 */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={handlePowerToggle}
+                    disabled={automationStatus === 'starting' || automationStatus === 'stopping'}
+                    className={cn(
+                      "w-12 h-12 rounded-full transition-all duration-300",
+                      getPowerButtonStyle()
+                    )}
+                    size="icon"
+                  >
+                    {(automationStatus === 'starting' || automationStatus === 'stopping') ? (
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    ) : (
+                      <Power className="w-6 h-6" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>
+                    {automationStatus === 'idle' && '시스템 시작'}
+                    {automationStatus === 'starting' && '시작 중...'}
+                    {automationStatus === 'running' && '시스템 중지'}
+                    {automationStatus === 'stopping' && '중지 중...'}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+        
         <div className="p-4 lg:p-6">
           {children}
         </div>

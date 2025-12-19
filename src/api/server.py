@@ -272,6 +272,75 @@ async def youtube_task(request: YouTubeTaskRequest):
     }
 
 
+# ==================== Automation Endpoints ====================
+
+# 자동화 오케스트레이터 인스턴스
+automation_orchestrator = None
+
+def get_automation_orchestrator():
+    """자동화 오케스트레이터 인스턴스 반환"""
+    global automation_orchestrator
+    if automation_orchestrator is None:
+        from src.automation.youtube_orchestrator import YouTubeOrchestrator
+        automation_orchestrator = YouTubeOrchestrator()
+    return automation_orchestrator
+
+
+@app.post("/api/automation/start")
+async def start_automation():
+    """자동화 시스템 시작"""
+    orchestrator = get_automation_orchestrator()
+    result = orchestrator.start()
+    
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
+    
+    return result
+
+
+@app.post("/api/automation/stop")
+async def stop_automation():
+    """자동화 시스템 중지"""
+    orchestrator = get_automation_orchestrator()
+    result = orchestrator.stop()
+    
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
+    
+    return result
+
+
+@app.get("/api/automation/status")
+async def get_automation_status():
+    """자동화 시스템 상태 조회"""
+    orchestrator = get_automation_orchestrator()
+    status = orchestrator.get_status()
+    
+    return {
+        "status": "running" if status["is_running"] else "idle",
+        "active_devices": status["active_devices"],
+        "total_actions": status["total_actions"],
+        "running_since": status["started_at"]
+    }
+
+
+@app.post("/api/automation/run-cycle")
+async def run_automation_cycle(background_tasks: BackgroundTasks):
+    """자동화 한 사이클 실행"""
+    orchestrator = get_automation_orchestrator()
+    
+    if not orchestrator.is_running:
+        raise HTTPException(status_code=400, detail="자동화 시스템이 시작되지 않았습니다")
+    
+    # 백그라운드에서 실행
+    background_tasks.add_task(orchestrator.run_cycle)
+    
+    return {
+        "message": "자동화 사이클이 백그라운드에서 실행됩니다",
+        "active_devices": orchestrator.active_devices
+    }
+
+
 # ==================== Config Endpoints ====================
 
 @app.get("/config")
