@@ -23,6 +23,8 @@ import {
   ChevronRight,
   Menu,
   X,
+  Send,
+  List,
 } from 'lucide-react';
 
 const navItems = [
@@ -33,11 +35,25 @@ const navItems = [
     description: '전체 현황'
   },
   { 
+    href: '/dashboard/do', 
+    icon: Send, 
+    label: 'DO 요청 지시',
+    description: '작업 요청 관리',
+    badge: 'NEW',
+    highlight: true
+  },
+  { 
     href: '/dashboard/activities', 
     icon: Activity, 
-    label: '6대 활동',
-    description: '상시 활동 관리',
+    label: 'BE 에이전트 활동',
+    description: '6대 상시 활동',
     badge: '6'
+  },
+  { 
+    href: '/dashboard/logs', 
+    icon: List, 
+    label: '통합 내역',
+    description: 'DO + BE 기록'
   },
   { 
     href: '/dashboard/channels', 
