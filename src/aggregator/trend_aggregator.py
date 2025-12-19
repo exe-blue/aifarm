@@ -115,11 +115,13 @@ class TrendAggregator:
         merged_data = self._merge_by_task_type(data_list)
         
         # Supabase 저장
-        await self._save_aggregated_data(keyword, merged_data)
-        
-        # 대기 데이터 삭제
-        del self._pending_data[keyword]
-        
+        try:
+            await self._save_aggregated_data(keyword, merged_data)
+            # 저장 성공 시에만 대기 데이터 삭제
+            del self._pending_data[keyword]
+        except Exception as e:
+            logger.error(f"키워드 '{keyword}' 저장 실패: {e}")
+            raise        
         result = AggregationResult(
             keyword=keyword,
             total_devices=total,

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { QueryProvider } from "@/lib/query-provider";
 
 export const metadata: Metadata = {
   title: "AIFarm - YouTube Intelligence System",
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="ko" className="dark">
       <body className="antialiased">
-        {children}
+        <QueryProvider>
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );

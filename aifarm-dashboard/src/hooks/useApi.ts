@@ -210,6 +210,91 @@ export function useRotateDevices() {
   });
 }
 
+// ==================== DO Requests (영상 시청 요청) ====================
+
+export function useDORequests(params?: { status?: string; limit?: number }) {
+  return useQuery({
+    queryKey: ['do-requests', params],
+    queryFn: () => api.getDORequests(params),
+    refetchInterval: 10000, // 10초마다 갱신
+  });
+}
+
+export function useCreateDORequest() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: {
+      title: string;
+      keyword: string;
+      video_title?: string;
+      agent_start?: number;
+      agent_end?: number;
+      like_probability?: number;
+      comment_probability?: number;
+      subscribe_probability?: number;
+      watch_time_min?: number;
+      watch_time_max?: number;
+      ai_comment_enabled?: boolean;
+      execute_immediately?: boolean;
+      priority?: number;
+      memo?: string;
+    }) => api.createDORequest(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['do-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function useUpdateDORequest() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ requestId, status }: { requestId: string; status: string }) =>
+      api.updateDORequest(requestId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['do-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function useCancelDORequest() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (requestId: string) => api.cancelDORequest(requestId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['do-requests'] });
+    },
+  });
+}
+
+// ==================== Device Issues (장치 장애) ====================
+
+export function useDeviceIssues(params?: { resolved?: boolean; limit?: number }) {
+  return useQuery({
+    queryKey: ['device-issues', params],
+    queryFn: () => api.getDeviceIssues(params),
+    refetchInterval: 30000,
+  });
+}
+
+export function useResolveDeviceIssue() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ issueId, notes }: { issueId: number; notes?: string }) =>
+      api.resolveDeviceIssue(issueId, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['device-issues'] });
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
 // ==================== Health Check ====================
 
 export function useHealthCheck() {

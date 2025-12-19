@@ -1,99 +1,161 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { GlowCard } from '@/components/common/GlowCard';
-import { mockUnifiedLogs, mockBEActivityLogs, mockDORequests } from '@/data/do-mock';
-import type { UnifiedLog, BEActivityLog } from '@/types/do-request';
 import { 
-  List,
-  Filter,
-  Search,
-  Calendar,
-  Send,
-  Activity,
+  History, 
+  RefreshCw,
   CheckCircle,
   XCircle,
-  Clock,
-  Play,
-  Smartphone,
-  RefreshCw,
-  Ban,
-  CalendarClock,
+  AlertTriangle,
+  PlayCircle,
+  Upload,
+  Activity,
+  Settings,
+  Filter,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import type { TaskLog, TaskLogType } from '@/types';
+
+// 로그 타입 설정
+const LOG_TYPE_CONFIG: Record<TaskLogType, {
+  label: string;
+  icon: React.ElementType;
+  color: string;
+}> = {
+  watch: {
+    label: '시청 요청',
+    icon: PlayCircle,
+    color: 'text-cyan-400',
+  },
+  upload: {
+    label: '업로드',
+    icon: Upload,
+    color: 'text-purple-400',
+  },
+  idle_activity: {
+    label: '유휴 활동',
+    icon: Activity,
+    color: 'text-yellow-400',
+  },
+  system: {
+    label: '시스템',
+    icon: Settings,
+    color: 'text-zinc-400',
+  },
+};
+
+// 모의 데이터
+const mockLogs: TaskLog[] = [
+  {
+    id: '1',
+    type: 'watch',
+    title: '시청 요청 완료',
+    description: '"2024년 재테크 전략 총정리" 시청 완료',
+    status: 'success',
+    device_count: 100,
+    success_count: 97,
+    failed_count: 3,
+    started_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    completed_at: new Date().toISOString(),
+  },
+  {
+    id: '2',
+    type: 'upload',
+    title: '영상 업로드 실패',
+    description: '"코딩 튜토리얼 #12" 업로드 실패',
+    status: 'failed',
+    started_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    completed_at: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+    metadata: { error: '파일 형식이 지원되지 않습니다' },
+  },
+  {
+    id: '3',
+    type: 'idle_activity',
+    title: '유휴 활동 배치 완료',
+    description: 'Shorts 리믹스 활동 배치 (15분)',
+    status: 'partial',
+    device_count: 120,
+    success_count: 112,
+    failed_count: 8,
+    started_at: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+    completed_at: new Date(Date.now() - 75 * 60 * 1000).toISOString(),
+  },
+  {
+    id: '4',
+    type: 'watch',
+    title: '시청 요청 완료',
+    description: '"신작 게임 플레이 리뷰" 시청 완료',
+    status: 'success',
+    device_count: 80,
+    success_count: 78,
+    failed_count: 2,
+    started_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    completed_at: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+  },
+  {
+    id: '5',
+    type: 'system',
+    title: '디바이스 재연결',
+    description: '보드 20 디바이스 6대 재연결 완료',
+    status: 'success',
+    started_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    completed_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: '6',
+    type: 'idle_activity',
+    title: '유휴 활동 배치 완료',
+    description: '페르소나 코멘터 활동 배치 (30분)',
+    status: 'success',
+    device_count: 100,
+    success_count: 98,
+    failed_count: 2,
+    started_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    completed_at: new Date(Date.now() - 3.5 * 60 * 60 * 1000).toISOString(),
+  },
+];
 
 export default function LogsPage() {
-  const [filter, setFilter] = useState<'all' | 'DO' | 'BE'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [logs] = useState<TaskLog[]>(mockLogs);
+  const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const filteredLogs = mockUnifiedLogs.filter(log => {
-    if (filter !== 'all' && log.source !== filter) return false;
-    if (searchQuery && !log.description.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+  const filteredLogs = logs.filter(log => {
+    if (selectedType !== 'all' && log.type !== selectedType) return false;
+    if (selectedStatus !== 'all' && log.status !== selectedStatus) return false;
     return true;
   });
 
-  const getSourceIcon = (source: 'DO' | 'BE') => {
-    return source === 'DO' 
-      ? <Send className="w-4 h-4 text-cyan-400" />
-      : <Activity className="w-4 h-4 text-purple-400" />;
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 1000);
   };
 
-  const getStatusIcon = (status: UnifiedLog['status']) => {
-    const icons = {
-      success: <CheckCircle className="w-4 h-4 text-green-400" />,
-      partial: <CheckCircle className="w-4 h-4 text-yellow-400" />,
-      failed: <XCircle className="w-4 h-4 text-red-400" />,
-      pending: <Clock className="w-4 h-4 text-gray-400" />,
-      in_progress: <Play className="w-4 h-4 text-yellow-400" />,
-      scheduled: <CalendarClock className="w-4 h-4 text-blue-400" />,
-      cancelled: <Ban className="w-4 h-4 text-gray-500" />,
-    };
-    return icons[status];
+  const getTimeAgo = (dateString: string) => {
+    const diff = Date.now() - new Date(dateString).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 60) return `${minutes}분 전`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}시간 전`;
+    return `${Math.floor(hours / 24)}일 전`;
   };
 
-  const getActivityBadge = (activityType: string) => {
-    const colors: Record<string, string> = {
-      shorts_remix: 'bg-cyan-500/20 text-cyan-400',
-      playlist_curator: 'bg-purple-500/20 text-purple-400',
-      persona_commenter: 'bg-pink-500/20 text-pink-400',
-      trend_scout: 'bg-yellow-500/20 text-yellow-400',
-      challenge_hunter: 'bg-orange-500/20 text-orange-400',
-      thumbnail_lab: 'bg-blue-500/20 text-blue-400',
-      do_request: 'bg-cyan-500/20 text-cyan-400',
-      youtube_watch: 'bg-red-500/20 text-red-400',
-    };
-    
-    const labels: Record<string, string> = {
-      shorts_remix: '리믹스',
-      playlist_curator: '플레이리스트',
-      persona_commenter: '코멘터',
-      trend_scout: '트렌드',
-      challenge_hunter: '챌린지',
-      thumbnail_lab: '썸네일',
-      do_request: 'DO처리',
-      youtube_watch: '시청',
-    };
-
-    return (
-      <Badge className={colors[activityType] || 'bg-gray-500/20 text-gray-400'}>
-        {labels[activityType] || activityType}
-      </Badge>
-    );
-  };
-
-  // 통계
-  const stats = {
-    total: filteredLogs.length,
-    doCount: filteredLogs.filter(l => l.source === 'DO').length,
-    beCount: filteredLogs.filter(l => l.source === 'BE').length,
-    success: filteredLogs.filter(l => l.status === 'success').length,
-    failed: filteredLogs.filter(l => l.status === 'failed').length,
+  const getDuration = (startedAt: string, completedAt?: string) => {
+    if (!completedAt) return '-';
+    const diff = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 60) return `${minutes}분`;
+    return `${Math.floor(minutes / 60)}시간 ${minutes % 60}분`;
   };
 
   return (
@@ -101,197 +163,131 @@ export default function LogsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
-            <List className="w-7 h-7 text-purple-400" />
-            통합 내역
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <History className="w-6 h-6 text-cyan-400" />
+            작업 로그
           </h1>
-          <p className="text-muted-foreground">DO 요청 지시와 BE 에이전트 활동의 통합 기록</p>
+          <p className="text-zinc-400 text-sm">완료된 작업 히스토리</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Calendar className="w-4 h-4 mr-2" />
-            기간 선택
-          </Button>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            새로고침
-          </Button>
-        </div>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={handleRefresh}
+          className="border-zinc-700 hover:bg-zinc-800"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          새로고침
+        </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <StatCard icon={<List />} label="전체" value={stats.total} color="purple" />
-        <StatCard icon={<Send />} label="DO 요청" value={stats.doCount} color="cyan" />
-        <StatCard icon={<Activity />} label="BE 활동" value={stats.beCount} color="pink" />
-        <StatCard icon={<CheckCircle />} label="성공" value={stats.success} color="green" />
-        <StatCard icon={<XCircle />} label="실패" value={stats.failed} color="red" />
-      </div>
+      {/* 필터 */}
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row gap-3">
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger className="w-full md:w-40 bg-zinc-800 border-zinc-700">
+                <SelectValue placeholder="유형 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 유형</SelectItem>
+                {Object.entries(LOG_TYPE_CONFIG).map(([type, config]) => (
+                  <SelectItem key={type} value={type}>
+                    {config.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="w-full md:w-40 bg-zinc-800 border-zinc-700">
+                <SelectValue placeholder="상태 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 상태</SelectItem>
+                <SelectItem value="success">성공</SelectItem>
+                <SelectItem value="partial">부분 성공</SelectItem>
+                <SelectItem value="failed">실패</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Filter & Search */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <Tabs defaultValue="all" className="flex-1" onValueChange={(v) => setFilter(v as 'all' | 'DO' | 'BE')}>
-          <TabsList className="bg-background/50 border border-border/50">
-            <TabsTrigger value="all" className="flex items-center gap-2">
-              <List className="w-4 h-4" /> 전체
-            </TabsTrigger>
-            <TabsTrigger value="DO" className="flex items-center gap-2">
-              <Send className="w-4 h-4" /> DO 요청
-            </TabsTrigger>
-            <TabsTrigger value="BE" className="flex items-center gap-2">
-              <Activity className="w-4 h-4" /> BE 활동
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="검색..."
-            className="pl-10 pr-4 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none w-full md:w-64"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Logs List */}
-      <GlowCard glowColor="purple" hover={false}>
-        <ScrollArea className="h-[600px]">
-          <div className="space-y-2">
-            <AnimatePresence mode="popLayout">
-              {filteredLogs.map((log, i) => (
-                <motion.div
-                  key={log.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ delay: i * 0.02 }}
-                  className="p-4 rounded-lg bg-background/50 border border-border/50 hover:border-purple-500/30 transition-colors"
-                >
-                  <div className="flex items-start gap-3">
-                    {/* Source & Status */}
-                    <div className="flex flex-col items-center gap-1">
-                      <div className={`p-2 rounded-lg ${log.source === 'DO' ? 'bg-cyan-500/10' : 'bg-purple-500/10'}`}>
-                        {getSourceIcon(log.source)}
-                      </div>
-                      {getStatusIcon(log.status)}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <Badge variant="outline" className={log.source === 'DO' ? 'border-cyan-500/50 text-cyan-400' : 'border-purple-500/50 text-purple-400'}>
-                          {log.source}
+      {/* 로그 목록 */}
+      <div className="space-y-3">
+        {filteredLogs.map((log) => {
+          const typeConfig = LOG_TYPE_CONFIG[log.type];
+          const Icon = typeConfig.icon;
+          
+          return (
+            <Card key={log.id} className="bg-zinc-900 border-zinc-800">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-4">
+                  <div className={`p-2 rounded-lg bg-zinc-800 ${typeConfig.color}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium text-white">{log.title}</h4>
+                      {log.status === 'success' && (
+                        <Badge className="bg-green-500/20 text-green-400 border-0">
+                          <CheckCircle className="w-3 h-3 mr-1" /> 성공
                         </Badge>
-                        {getActivityBadge(log.activityType)}
-                        {log.deviceId && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Smartphone className="w-3 h-3" />
-                            #{log.deviceId}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm">{log.description}</p>
-                      
-                      {/* Metadata */}
-                      {log.metadata && (
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          {log.source === 'DO' && log.metadata.progress && (
-                            <span>
-                              진행: {(log.metadata.progress as { completed: number; total: number }).completed}/
-                              {(log.metadata.progress as { completed: number; total: number }).total}
-                            </span>
-                          )}
-                          {log.source === 'BE' && log.metadata.discoveredData && (
-                            <span className="text-purple-400">
-                              {Object.entries(log.metadata.discoveredData as Record<string, unknown>)
-                                .filter(([, v]) => v)
-                                .map(([k, v]) => `${k}: ${v}`)
-                                .join(', ')}
-                            </span>
-                          )}
-                        </div>
+                      )}
+                      {log.status === 'partial' && (
+                        <Badge className="bg-yellow-500/20 text-yellow-400 border-0">
+                          <AlertTriangle className="w-3 h-3 mr-1" /> 부분 성공
+                        </Badge>
+                      )}
+                      {log.status === 'failed' && (
+                        <Badge className="bg-red-500/20 text-red-400 border-0">
+                          <XCircle className="w-3 h-3 mr-1" /> 실패
+                        </Badge>
                       )}
                     </div>
-
-                    {/* Timestamp */}
-                    <div className="text-xs text-muted-foreground text-right whitespace-nowrap">
-                      {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true, locale: ko })}
+                    
+                    <p className="text-sm text-zinc-400">{log.description}</p>
+                    
+                    <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-zinc-500">
+                      <span>{getTimeAgo(log.completed_at || log.started_at)}</span>
+                      <span>•</span>
+                      <span>소요시간: {getDuration(log.started_at, log.completed_at)}</span>
+                      {log.device_count !== undefined && (
+                        <>
+                          <span>•</span>
+                          <span>
+                            기기: {log.success_count}/{log.device_count}
+                            {log.failed_count !== undefined && log.failed_count > 0 && (
+                              <span className="text-red-400"> (실패 {log.failed_count})</span>
+                            )}
+                          </span>
+                        </>
+                      )}
                     </div>
+                    
+                    {log.metadata?.error && (
+                      <p className="text-xs text-red-400 mt-2">
+                        오류: {String(log.metadata.error)}
+                      </p>
+                    )}
                   </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-
-            {filteredLogs.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <List className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>해당하는 내역이 없습니다</p>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-      </GlowCard>
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-cyan-500" />
-          <span>DO: 요청 지시</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-purple-500" />
-          <span>BE: 에이전트 활동</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <CheckCircle className="w-3 h-3 text-green-400" />
-          <span>성공</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <XCircle className="w-3 h-3 text-red-400" />
-          <span>실패</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Play className="w-3 h-3 text-yellow-400" />
-          <span>진행중</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <CalendarClock className="w-3 h-3 text-blue-400" />
-          <span>예약됨</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Ban className="w-3 h-3 text-gray-500" />
-          <span>취소됨</span>
-        </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
+
+      {/* 빈 상태 */}
+      {filteredLogs.length === 0 && (
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardContent className="py-12 text-center">
+            <History className="w-12 h-12 mx-auto text-zinc-600 mb-4" />
+            <h3 className="text-lg font-medium text-zinc-400 mb-2">로그가 없습니다</h3>
+            <p className="text-sm text-zinc-500">선택한 필터에 해당하는 로그가 없습니다</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
-
-function StatCard({ icon, label, value, color }: { 
-  icon: React.ReactNode;
-  label: string; 
-  value: number; 
-  color: string;
-}) {
-  const colorClasses: Record<string, string> = {
-    purple: 'border-purple-500/30 text-purple-400',
-    cyan: 'border-cyan-500/30 text-cyan-400',
-    pink: 'border-pink-500/30 text-pink-400',
-    green: 'border-green-500/30 text-green-400',
-    red: 'border-red-500/30 text-red-400',
-  };
-
-  return (
-    <div className={`p-3 rounded-lg border bg-background/50 ${colorClasses[color]}`}>
-      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-        {icon}
-        {label}
-      </div>
-      <div className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>{value}</div>
-    </div>
-  );
-}
-

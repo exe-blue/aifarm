@@ -1,189 +1,271 @@
-// Types for AIFarm Dashboard
+// AIFarm Dashboard v4 - Types
+
+// ==================== 디바이스 상태 ====================
+export type DeviceStatus = 
+  | 'online'       // 정상 (🟢)
+  | 'temp_high'    // 문제-온도 (🟠)
+  | 'wrong_mode'   // 문제-모드 (🟡)
+  | 'disconnected' // 연결-없음 (🔴)
+  | 'unstable';    // 연결-불안정 (🟣)
 
 export interface Device {
   id: number;
-  phoneBoardId: number;
-  status: 'active' | 'idle' | 'error' | 'maintenance';
-  currentActivity?: ActivityType;
-  currentActivityStartedAt?: string;
-  lastHeartbeat?: string;
-  totalActivitiesToday: number;
-  errorCountToday: number;
+  device_name: string;        // "01-01" ~ "30-20" (보드번호-슬롯번호)
+  board_id: number;           // 1~30
+  slot_number: number;        // 1~20
+  serial_number?: string;     // ADB serial
+  
+  // 네트워크
+  ip_address?: string;
+  ap_group?: number;          // 1~5
+  
+  // 계정
+  google_account?: string;
+  youtube_channel_id?: string;
+  
+  // 상태
+  status: DeviceStatus;
+  temperature?: number;
+  connection_mode?: 'wifi' | 'usb' | 'otg';
+  last_heartbeat?: string;
+  error_message?: string;
+  
+  // 현재 작업
+  current_task?: string;
+  
+  created_at?: string;
+  updated_at?: string;
 }
 
-export type ActivityType = 
-  | 'shorts_remix'
-  | 'playlist_curator'
-  | 'persona_commenter'
-  | 'trend_scout'
-  | 'challenge_hunter'
-  | 'thumbnail_lab';
+// ==================== 보드 ====================
+export interface PhoneBoard {
+  id: number;                  // 1~30
+  name: string;                // "보드 01" 등
+  is_connected: boolean;
+  total_slots: number;         // 20
+  online_devices: number;
+  offline_devices: number;
+  error_devices: number;
+  last_seen?: string;
+}
 
-export interface Activity {
+// ==================== 시청 요청 ====================
+export type WatchRequestStatus = 
+  | 'pending'      // 대기중
+  | 'scheduled'    // 예약됨
+  | 'in_progress'  // 진행중
+  | 'completed'    // 완료
+  | 'failed'       // 실패
+  | 'cancelled';   // 취소됨
+
+export interface WatchRequest {
+  id: string;
+  video_title: string;
+  video_url?: string;
+  keywords: string[];          // 5개 키워드 세트
+  target_views: number;
+  completed_views: number;
+  failed_views: number;
+  like_rate: number;           // 0~100 %
+  comment_rate: number;        // 0~100 %
+  subscribe_rate?: number;     // 0~100 %
+  watch_time_min?: number;     // 최소 시청시간 (초)
+  watch_time_max?: number;     // 최대 시청시간 (초)
+  status: WatchRequestStatus;
+  priority: 1 | 2 | 3;         // 1=긴급, 2=일반, 3=낮음
+  created_at: string;
+  scheduled_at?: string;
+  started_at?: string;
+  completed_at?: string;
+  assigned_devices?: number[];
+  memo?: string;
+}
+
+export interface WatchSession {
+  id: string;
+  request_id: string;
+  device_id: number;
+  device_name: string;
+  keyword: string;
+  video_title: string;
+  watch_duration: number;      // 시청 시간 (초)
+  total_duration: number;      // 영상 총 길이 (초)
+  watch_percentage: number;    // 시청률 %
+  liked: boolean;
+  commented: boolean;
+  subscribed?: boolean;
+  status: 'searching' | 'watching' | 'interacting' | 'completed' | 'error';
+  started_at: string;
+  completed_at?: string;
+  error_message?: string;
+}
+
+// ==================== 유휴 활동 ====================
+export type ActivityType = 
+  | 'shorts_remix'        // Shorts 리믹스
+  | 'playlist_curator'    // 플레이리스트 큐레이터
+  | 'persona_commenter'   // 페르소나 코멘터
+  | 'trend_scout'         // 트렌드 스카우터
+  | 'challenge_hunter'    // 챌린지 헌터
+  | 'thumbnail_lab';      // 썸네일 랩
+
+export interface IdleActivity {
   id: ActivityType;
   name: string;
   icon: string;
   description: string;
-  color: string;
-  allocatedDevices: number;
-  activeDevices: number;
-  itemsProcessedToday: number;
-  successRate: number;
+  allocated_devices: number;   // 할당된 기기 수
+  active_devices: number;      // 현재 활동 중
+  is_enabled: boolean;
+  today_tasks: number;         // 오늘 완료 수
+  success_rate: number;        // 성공률 %
+  last_run?: string;
 }
 
-export interface Channel {
+// ==================== YouTube 채널 ====================
+export interface YouTubeChannel {
   id: string;
-  youtubeChannelId: string;
-  name: string;
-  category: string;
-  thumbnailUrl?: string;
-  subscriberCount: number;
-  totalViews: number;
-  level: number;
-  experiencePoints: number;
-  experienceToNextLevel: number;
-  compositeScore: number;
-  categoryRank: number;
-  globalRank: number;
-  stats: ChannelStats;
-  weeklyGrowth: number;
+  channel_id: string;
+  channel_name: string;
+  thumbnail_url?: string;
+  
+  // 오늘 통계
+  today_views: number;
+  today_watch_time: number;    // 분 단위
+  today_subscribers: number;   // 순증감
+  today_uploads: number;
+  
+  // 누적 통계
+  total_subscribers: number;
+  total_views: number;
+  total_videos: number;
+  
+  // 최근 영상
+  recent_videos?: RecentVideo[];
+  
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface ChannelStats {
-  hp: number; // 구독자 유지율
-  mp: number; // 업로드 일관성
-  atk: number; // 바이럴 파워
-  def: number; // 커뮤니티 건강도
-  spd: number; // 성장 속도
-  int: number; // AI 추천 수용률
+export interface RecentVideo {
+  video_id: string;
+  title: string;
+  thumbnail_url?: string;
+  published_at: string;
+  views: number;
+  likes: number;
+  comments: number;
+  duration?: number;           // 초
 }
 
-export interface Competitor {
+// ==================== 업로드 관리 ====================
+export type UploadStatus = 'scheduled' | 'uploading' | 'processing' | 'published' | 'failed';
+
+export interface ScheduledUpload {
   id: string;
-  youtubeChannelId: string;
-  name: string;
-  category: string;
-  subscriberCount: number;
-  recentViews: number;
-  engagementRate: number;
-  categoryRank: number;
-  thumbnailUrl?: string;
+  video_title: string;
+  video_file?: string;
+  channel_id: string;
+  channel_name: string;
+  scheduled_at: string;
+  status: UploadStatus;
+  progress?: number;           // 0~100 업로드 진행률
+  published_url?: string;
+  error_message?: string;
+  created_at: string;
 }
 
-export interface Quest {
+// ==================== 작업 로그 ====================
+export type TaskLogType = 'watch' | 'upload' | 'idle_activity' | 'system';
+
+export interface TaskLog {
   id: string;
-  channelId: string;
-  questType: 'daily' | 'weekly' | 'achievement';
+  type: TaskLogType;
   title: string;
   description: string;
-  targetMetric: string;
-  targetValue: number;
-  currentValue: number;
-  progress: number;
-  rewardExp: number;
-  rewardBadge?: string;
-  status: 'active' | 'completed' | 'failed';
-  deadlineAt?: string;
+  status: 'success' | 'failed' | 'partial';
+  device_count?: number;
+  success_count?: number;
+  failed_count?: number;
+  started_at: string;
+  completed_at?: string;
+  metadata?: Record<string, unknown>;
 }
 
-export interface BattleLogEntry {
-  id: string;
-  eventType: 'rank_up' | 'rank_down' | 'viral_hit' | 'quest_complete' | 'challenge_join' | 'trend_catch';
-  ourChannelId?: string;
-  ourChannelName?: string;
-  competitorChannelId?: string;
-  competitorChannelName?: string;
-  description: string;
-  impactScore: number;
-  createdAt: string;
-}
+// ==================== 장애 이슈 ====================
+export type IssueType = 
+  | 'board_disconnected' 
+  | 'device_offline' 
+  | 'device_error'
+  | 'temperature_high'
+  | 'connection_unstable';
 
-export interface TrendingShorts {
-  id: string;
-  videoId: string;
-  title: string;
-  channelName: string;
-  viewCount: number;
-  viralScore: number;
-  viralFactors: string[];
-  musicTitle?: string;
-  hashtags: string[];
-  detectedAt: string;
-}
-
-export interface RemixIdea {
-  id: string;
-  sourceShorts: TrendingShorts[];
-  title: string;
-  conceptDescription: string;
-  differentiationPoint: string;
-  remixDirection: 'parody' | 'mashup' | 'localization' | 'twist';
-  recommendedMusic?: string;
-  estimatedViralProbability: number;
-  status: 'pending' | 'approved' | 'in_production' | 'published' | 'rejected';
-  targetChannel?: Channel;
-  createdAt: string;
-}
-
-export interface Challenge {
-  id: string;
-  name: string;
-  hashtags: string[];
-  musicTitle?: string;
-  lifecycleStage: 'birth' | 'growth' | 'peak' | 'decline' | 'dead';
-  totalParticipants: number;
-  dailyNewParticipants: number;
-  avgViewCount: number;
-  isActive: boolean;
-  firstDetectedAt: string;
-  opportunityScore: number;
-}
-
-export interface Persona {
-  id: string;
-  name: string;
-  age: number;
-  interests: string[];
-  toneDescription: string;
-  sampleComments: string[];
-  isActive: boolean;
-  commentsToday: number;
-  engagementRate: number;
-}
-
-export interface PlaylistTheme {
-  id: string;
-  themeName: string;
-  themeDescription: string;
-  searchKeywords: string[];
-  moodTags: string[];
-  targetVideoCount: number;
-  currentVideoCount: number;
-  status: 'pending' | 'in_progress' | 'completed';
-  themeDate: string;
-}
-
-export interface DashboardStats {
-  totalDevices: number;
-  activeDevices: number;
-  idleDevices: number;
-  errorDevices: number;
-  totalChannels: number;
-  avgChannelLevel: number;
-  totalQuestsActive: number;
-  questsCompletedToday: number;
-  trendsDetectedToday: number;
-  remixIdeasToday: number;
-  challengesTracked: number;
-  commentsPostedToday: number;
-}
-
-export interface Notification {
-  id: string;
-  type: 'alert' | 'info' | 'warning' | 'error' | 'success';
-  sourceActivity?: ActivityType;
-  title: string;
+export interface DeviceIssue {
+  id: number;
+  device_id?: number;
+  device_name: string;
+  board_id: number;
+  slot_number?: number;
+  issue_type: IssueType;
   message: string;
-  isRead: boolean;
-  createdAt: string;
+  detected_at: string;
+  resolved: boolean;
+  resolved_at?: string;
+  notes?: string;
+}
+
+// ==================== 대시보드 통계 ====================
+export interface DashboardStats {
+  // 디바이스 현황
+  devices: {
+    total: number;
+    online: number;
+    temp_high: number;
+    wrong_mode: number;
+    disconnected: number;
+    unstable: number;
+  };
+  
+  // 보드 현황
+  boards: {
+    total: number;
+    connected: number;
+    disconnected: number;
+  };
+  
+  // 시청 요청 현황
+  watch_requests: {
+    pending: number;
+    in_progress: number;
+    completed_today: number;
+    total_views_today: number;
+  };
+  
+  // 유휴 활동 현황
+  idle_activities: {
+    active_count: number;
+    total_tasks_today: number;
+    avg_success_rate: number;
+  };
+  
+  // 채널 현황
+  channels: {
+    total: number;
+    total_views_today: number;
+    total_subscribers_change: number;
+  };
+}
+
+// ==================== API 응답 타입 ====================
+export interface ApiResponse<T> {
+  data?: T;
+  error?: string;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
 }

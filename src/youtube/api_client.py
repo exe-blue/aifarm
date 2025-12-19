@@ -165,11 +165,15 @@ class YouTubeAPIClient:
         Returns:
             SearchResult 리스트
         """
+        # 캐시 키 생성을 위한 파라미터 (모든 호출 시그니처 포함)
+        # published_after는 datetime이므로 ISO 형식 문자열로 정규화
         params = {
             'query': query,
             'max_results': max_results,
             'order': order,
-            'region_code': region_code
+            'region_code': region_code,
+            'published_after': published_after.isoformat() if published_after else None,
+            'video_category_id': video_category_id
         }
         
         # 캐시 확인

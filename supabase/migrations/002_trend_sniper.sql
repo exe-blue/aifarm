@@ -267,7 +267,10 @@ GROUP BY task_type;
 -- 초기 데이터 (옵션)
 -- ============================================
 
--- 테스트용 알림 추가
-INSERT INTO trend_alerts (alert_type, severity, title, message) VALUES
-('system', 'info', '트렌드 스나이퍼 시스템 초기화', '트렌드 분석 시스템이 성공적으로 초기화되었습니다.')
-ON CONFLICT DO NOTHING;
+-- 테스트용 알림 추가 (중복 방지를 위해 WHERE NOT EXISTS 사용)
+INSERT INTO trend_alerts (alert_type, severity, title, message)
+SELECT 'system', 'info', '트렌드 스나이퍼 시스템 초기화', '트렌드 분석 시스템이 성공적으로 초기화되었습니다.'
+WHERE NOT EXISTS (
+    SELECT 1 FROM trend_alerts 
+    WHERE alert_type = 'system' AND title = '트렌드 스나이퍼 시스템 초기화'
+);
