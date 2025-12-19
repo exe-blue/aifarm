@@ -111,7 +111,10 @@ export default function DORequestsPage() {
                 에이전트에게 보낼 작업 요청을 입력하세요
               </DialogDescription>
             </DialogHeader>
-            <DORequestForm onSubmit={() => setIsCreateDialogOpen(false)} />
+            <DORequestForm 
+              onSubmit={() => setIsCreateDialogOpen(false)} 
+              onCancel={() => setIsCreateDialogOpen(false)} 
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -185,15 +188,21 @@ export default function DORequestsPage() {
                         </div>
                       </div>
                       
-                      {request.status === 'in_progress' && (
-                        <div className="mt-3">
-                          <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                            <span>진행률</span>
-                            <span>{request.completedAgents}/{request.totalAgents} ({Math.round(request.completedAgents / request.totalAgents * 100)}%)</span>
+                      {request.status === 'in_progress' && (() => {
+                        // 0으로 나누기 방지: totalAgents가 0이면 0% 표시
+                        const total = request.totalAgents || 0;
+                        const progressPct = total > 0 ? Math.round((request.completedAgents / total) * 100) : 0;
+                        const progressValue = total > 0 ? (request.completedAgents / total) * 100 : 0;
+                        return (
+                          <div className="mt-3">
+                            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                              <span>진행률</span>
+                              <span>{request.completedAgents}/{total} ({progressPct}%)</span>
+                            </div>
+                            <Progress value={progressValue} className="h-1.5" />
                           </div>
-                          <Progress value={(request.completedAgents / request.totalAgents) * 100} className="h-1.5" />
-                        </div>
-                      )}
+                        );
+                      })()}
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -294,20 +303,25 @@ function DORequestDetail({ request }: { request: DORequest }) {
           </div>
         )}
 
-        {request.status === 'in_progress' && (
-          <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-            <div className="flex justify-between text-sm mb-2">
-              <span>진행 상황</span>
-              <span>{request.completedAgents}/{request.totalAgents}</span>
-            </div>
-            <Progress value={(request.completedAgents / request.totalAgents) * 100} className="h-2" />
-            {request.failedAgents > 0 && (
-              <div className="text-xs text-red-400 mt-2">
-                실패: {request.failedAgents}건
+        {request.status === 'in_progress' && (() => {
+          // 0으로 나누기 방지: totalAgents가 0이면 0% 표시
+          const total = request.totalAgents || 0;
+          const progressValue = total > 0 ? (request.completedAgents / total) * 100 : 0;
+          return (
+            <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+              <div className="flex justify-between text-sm mb-2">
+                <span>진행 상황</span>
+                <span>{request.completedAgents}/{total}</span>
               </div>
-            )}
-          </div>
-        )}
+              <Progress value={progressValue} className="h-2" />
+              {request.failedAgents > 0 && (
+                <div className="text-xs text-red-400 mt-2">
+                  실패: {request.failedAgents}건
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {request.memo && (
           <div className="p-3 rounded-lg bg-background/50 border border-border/50">
@@ -377,7 +391,14 @@ function getPriorityBadgeStatic(priority: 1 | 2 | 3) {
   return <Badge className={styles[priority].color}>{styles[priority].label}</Badge>;
 }
 
-function DORequestForm({ onSubmit }: { onSubmit: () => void }) {
+// 유효성 검증 에러 타입 정의
+interface ValidationErrors {
+  agentRange?: string;
+  watchTime?: string;
+  watchPercent?: string;
+}
+
+function DORequestForm({ onSubmit, onCancel }: { onSubmit: () => void; onCancel: () => void }) {
   const [formData, setFormData] = useState<Partial<DORequestCreateInput>>({
     type: 'youtube_watch',
     priority: 2,
@@ -395,8 +416,73 @@ function DORequestForm({ onSubmit }: { onSubmit: () => void }) {
     executeImmediately: true,
   });
 
+  // 유효성 검증 에러 상태
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+
+  // 범위 필드 유효성 검증 함수
+  const validateRangeFields = (data: Partial<DORequestCreateInput>): ValidationErrors => {
+    const errors: ValidationErrors = {};
+    
+    // 에이전트 범위 검증 (1-600)
+    const agentStart = data.agentStart ?? 1;
+    const agentEnd = data.agentEnd ?? 100;
+    if (agentStart > agentEnd) {
+      errors.agentRange = '에이전트 시작 값은 끝 값보다 작거나 같아야 합니다';
+    }
+    
+    // 시청 시간 범위 검증 (10-600초)
+    const watchTimeMin = data.watchTimeMin ?? 60;
+    const watchTimeMax = data.watchTimeMax ?? 180;
+    if (watchTimeMin > watchTimeMax) {
+      errors.watchTime = '최소 시청 시간은 최대 시청 시간보다 작거나 같아야 합니다';
+    }
+    
+    // 시청 비율 범위 검증 (0-100%)
+    const watchPercentMin = data.watchPercentMin ?? 40;
+    const watchPercentMax = data.watchPercentMax ?? 90;
+    if (watchPercentMin > watchPercentMax) {
+      errors.watchPercent = '최소 시청 비율은 최대 시청 비율보다 작거나 같아야 합니다';
+    }
+    
+    return errors;
+  };
+
+  // 값 변경 시 유효성 검증 수행
+  const handleFieldChange = (field: keyof DORequestCreateInput, value: number | string | boolean) => {
+    const newFormData = { ...formData, [field]: value };
+    setFormData(newFormData);
+    
+    // 범위 관련 필드가 변경되면 유효성 검증 수행
+    const rangeFields: (keyof DORequestCreateInput)[] = [
+      'agentStart', 'agentEnd', 
+      'watchTimeMin', 'watchTimeMax',
+      'watchPercentMin', 'watchPercentMax'
+    ];
+    
+    if (rangeFields.includes(field)) {
+      const errors = validateRangeFields(newFormData);
+      setValidationErrors(errors);
+    }
+  };
+
+  // 숫자 필드 값 클램핑 (min/max 범위 내로 제한)
+  const clampValue = (value: number, min: number, max: number): number => {
+    return Math.max(min, Math.min(max, value));
+  };
+
+  // 폼 제출 가능 여부 확인
+  const isFormValid = Object.keys(validationErrors).length === 0;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 제출 전 최종 유효성 검증
+    const errors = validateRangeFields(formData);
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+    
     console.log('Submit DO Request:', formData);
     // TODO: API 호출
     onSubmit();
@@ -455,11 +541,13 @@ function DORequestForm({ onSubmit }: { onSubmit: () => void }) {
           <label className="block text-sm font-medium mb-1">에이전트 시작</label>
           <input
             type="number"
-            className="w-full p-2 rounded-lg bg-background border border-border focus:border-cyan-500 outline-none"
+            className={`w-full p-2 rounded-lg bg-background border outline-none ${
+              validationErrors.agentRange ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-cyan-500'
+            }`}
             min={1}
             max={600}
             value={formData.agentStart || 1}
-            onChange={(e) => setFormData({ ...formData, agentStart: Number(e.target.value) })}
+            onChange={(e) => handleFieldChange('agentStart', clampValue(Number(e.target.value), 1, 600))}
           />
         </div>
 
@@ -467,12 +555,17 @@ function DORequestForm({ onSubmit }: { onSubmit: () => void }) {
           <label className="block text-sm font-medium mb-1">에이전트 끝</label>
           <input
             type="number"
-            className="w-full p-2 rounded-lg bg-background border border-border focus:border-cyan-500 outline-none"
+            className={`w-full p-2 rounded-lg bg-background border outline-none ${
+              validationErrors.agentRange ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-cyan-500'
+            }`}
             min={1}
             max={600}
             value={formData.agentEnd || 100}
-            onChange={(e) => setFormData({ ...formData, agentEnd: Number(e.target.value) })}
+            onChange={(e) => handleFieldChange('agentEnd', clampValue(Number(e.target.value), 1, 600))}
           />
+          {validationErrors.agentRange && (
+            <p className="text-xs text-red-500 mt-1 col-span-2">{validationErrors.agentRange}</p>
+          )}
         </div>
 
         <div>
@@ -540,11 +633,13 @@ function DORequestForm({ onSubmit }: { onSubmit: () => void }) {
           <label className="block text-sm font-medium mb-1">최소 시청 시간 (초)</label>
           <input
             type="number"
-            className="w-full p-2 rounded-lg bg-background border border-border focus:border-cyan-500 outline-none"
+            className={`w-full p-2 rounded-lg bg-background border outline-none ${
+              validationErrors.watchTime ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-cyan-500'
+            }`}
             min={10}
             max={600}
             value={formData.watchTimeMin || 60}
-            onChange={(e) => setFormData({ ...formData, watchTimeMin: Number(e.target.value) })}
+            onChange={(e) => handleFieldChange('watchTimeMin', clampValue(Number(e.target.value), 10, 600))}
           />
         </div>
 
@@ -552,12 +647,17 @@ function DORequestForm({ onSubmit }: { onSubmit: () => void }) {
           <label className="block text-sm font-medium mb-1">최대 시청 시간 (초)</label>
           <input
             type="number"
-            className="w-full p-2 rounded-lg bg-background border border-border focus:border-cyan-500 outline-none"
+            className={`w-full p-2 rounded-lg bg-background border outline-none ${
+              validationErrors.watchTime ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-cyan-500'
+            }`}
             min={10}
             max={600}
             value={formData.watchTimeMax || 180}
-            onChange={(e) => setFormData({ ...formData, watchTimeMax: Number(e.target.value) })}
+            onChange={(e) => handleFieldChange('watchTimeMax', clampValue(Number(e.target.value), 10, 600))}
           />
+          {validationErrors.watchTime && (
+            <p className="text-xs text-red-500 mt-1 col-span-2">{validationErrors.watchTime}</p>
+          )}
         </div>
 
         <div className="col-span-2">
@@ -594,10 +694,14 @@ function DORequestForm({ onSubmit }: { onSubmit: () => void }) {
       </div>
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onSubmit}>
+        <Button type="button" variant="outline" onClick={onCancel}>
           취소
         </Button>
-        <Button type="submit" className="bg-cyan-600 hover:bg-cyan-700">
+        <Button 
+          type="submit" 
+          className="bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!isFormValid}
+        >
           <Send className="w-4 h-4 mr-2" />
           요청 생성
         </Button>
