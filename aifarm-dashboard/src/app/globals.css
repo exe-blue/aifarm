@@ -45,8 +45,8 @@
   --radius-md: 0.5rem;
   --radius-sm: 0.25rem;
   
-  --font-display: 'Orbitron', 'Rajdhani', system-ui, sans-serif;
-  --font-body: 'Rajdhani', 'Inter', system-ui, sans-serif;
+  --font-display: 'Orbitron', 'Pretendard', system-ui, sans-serif;
+  --font-body: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
@@ -70,7 +70,10 @@
   }
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* Pretendard 폰트 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+/* 추가 폰트 */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 .neon-text {
   text-shadow: 
