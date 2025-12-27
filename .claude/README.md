@@ -19,6 +19,10 @@ copy .claude\settings.local.json.example .claude\settings.local.json
 
 ### 2. Permission template
 
+>   **Security Warning**: The example below uses wildcarded patterns (e.g., `Bash(ssh:*)`) which grant broad permissions. This is a starting point onlyfollow the principle of least privilege and narrow or replace wildcards to only the specific commands/hosts you need.
+
+<!-- TODO: Review and restrict each entry to specific targets (e.g., Bash(ssh user@specific-host)) before production use -->
+
 The example template provides a reasonable set of permissions for common deployment operations:
 
 ```json

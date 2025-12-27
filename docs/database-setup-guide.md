@@ -62,15 +62,10 @@ Supabase 대시보드 > **SQL Editor** > **New Query**
 -- YouTube 자동화 시스템 - Supabase 스키마
 -- =============================================
 
--- UUID 확장 (Supabase에서 기본 활성화됨)
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- =============================================
--- 1. 영상 테이블
--- =============================================
+-- 영상 테이블
 CREATE TABLE IF NOT EXISTS videos (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    url TEXT,
+    id BIGSERIAL PRIMARY KEY,
+    url TEXT NOT NULL,
     title TEXT,
     keyword VARCHAR(255),
     duration INTEGER,
@@ -83,12 +78,37 @@ CREATE TABLE IF NOT EXISTS videos (
 );
 
 -- 영상 RLS 정책
+-- service_role: 백엔드 서비스용 전체 권한
+-- anon: 프론트엔드 대시보드용 읽기 전용
 ALTER TABLE videos ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "videos_select" ON videos FOR SELECT USING (true);
-CREATE POLICY "videos_insert" ON videos FOR INSERT WITH CHECK (true);
-CREATE POLICY "videos_update" ON videos FOR UPDATE USING (true);
-CREATE POLICY "videos_delete" ON videos FOR DELETE USING (true);
+-- SELECT: 인증된 사용자 및 서비스 계정 허용
+CREATE POLICY "videos_select_service" ON videos FOR SELECT
+    TO service_role
+    USING (true);
+
+CREATE POLICY "videos_select_authenticated" ON videos FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- 대시보드 읽기용 (anon key)
+CREATE POLICY "videos_select_anon" ON videos FOR SELECT
+    TO anon
+    USING (true);
+
+-- INSERT/UPDATE/DELETE: service_role만 허용 (백엔드 전용)
+CREATE POLICY "videos_insert_service" ON videos FOR INSERT
+    TO service_role
+    WITH CHECK (true);
+
+CREATE POLICY "videos_update_service" ON videos FOR UPDATE
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "videos_delete_service" ON videos FOR DELETE
+    TO service_role
+    USING (true);
 
 -- =============================================
 -- 2. 기기 테이블
@@ -112,12 +132,36 @@ CREATE TABLE IF NOT EXISTS devices (
 );
 
 -- 기기 RLS 정책
+-- 기기 정보는 민감할 수 있으므로 service_role 위주로 제어
 ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "devices_select" ON devices FOR SELECT USING (true);
-CREATE POLICY "devices_insert" ON devices FOR INSERT WITH CHECK (true);
-CREATE POLICY "devices_update" ON devices FOR UPDATE USING (true);
-CREATE POLICY "devices_delete" ON devices FOR DELETE USING (true);
+-- SELECT: 인증된 사용자 및 서비스 계정 허용
+CREATE POLICY "devices_select_service" ON devices FOR SELECT
+    TO service_role
+    USING (true);
+
+CREATE POLICY "devices_select_authenticated" ON devices FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- 대시보드 읽기용 (anon key) - 기기 상태 모니터링
+CREATE POLICY "devices_select_anon" ON devices FOR SELECT
+    TO anon
+    USING (true);
+
+-- INSERT/UPDATE/DELETE: service_role만 허용 (PC 클라이언트/백엔드 전용)
+CREATE POLICY "devices_insert_service" ON devices FOR INSERT
+    TO service_role
+    WITH CHECK (true);
+
+CREATE POLICY "devices_update_service" ON devices FOR UPDATE
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "devices_delete_service" ON devices FOR DELETE
+    TO service_role
+    USING (true);
 
 -- =============================================
 -- 3. 작업 테이블
@@ -139,12 +183,36 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 
 -- 작업 RLS 정책
+-- 작업 큐는 service_role에서만 생성/수정, 조회는 허용
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "tasks_select" ON tasks FOR SELECT USING (true);
-CREATE POLICY "tasks_insert" ON tasks FOR INSERT WITH CHECK (true);
-CREATE POLICY "tasks_update" ON tasks FOR UPDATE USING (true);
-CREATE POLICY "tasks_delete" ON tasks FOR DELETE USING (true);
+-- SELECT: 인증된 사용자 및 서비스 계정 허용
+CREATE POLICY "tasks_select_service" ON tasks FOR SELECT
+    TO service_role
+    USING (true);
+
+CREATE POLICY "tasks_select_authenticated" ON tasks FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- 대시보드 읽기용 (anon key)
+CREATE POLICY "tasks_select_anon" ON tasks FOR SELECT
+    TO anon
+    USING (true);
+
+-- INSERT/UPDATE/DELETE: service_role만 허용 (작업 스케줄러 전용)
+CREATE POLICY "tasks_insert_service" ON tasks FOR INSERT
+    TO service_role
+    WITH CHECK (true);
+
+CREATE POLICY "tasks_update_service" ON tasks FOR UPDATE
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "tasks_delete_service" ON tasks FOR DELETE
+    TO service_role
+    USING (true);
 
 -- =============================================
 -- 4. 결과 테이블
@@ -170,12 +238,37 @@ CREATE TABLE IF NOT EXISTS results (
 );
 
 -- 결과 RLS 정책
+-- 결과 데이터는 통계/분석에 사용되므로 조회 허용, 수정은 제한
 ALTER TABLE results ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "results_select" ON results FOR SELECT USING (true);
-CREATE POLICY "results_insert" ON results FOR INSERT WITH CHECK (true);
-CREATE POLICY "results_update" ON results FOR UPDATE USING (true);
-CREATE POLICY "results_delete" ON results FOR DELETE USING (true);
+-- SELECT: 인증된 사용자 및 서비스 계정 허용 (통계 조회용)
+CREATE POLICY "results_select_service" ON results FOR SELECT
+    TO service_role
+    USING (true);
+
+CREATE POLICY "results_select_authenticated" ON results FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- 대시보드 읽기용 (anon key) - 통계 대시보드
+CREATE POLICY "results_select_anon" ON results FOR SELECT
+    TO anon
+    USING (true);
+
+-- INSERT: service_role만 허용 (기기에서 결과 저장 시)
+CREATE POLICY "results_insert_service" ON results FOR INSERT
+    TO service_role
+    WITH CHECK (true);
+
+-- UPDATE/DELETE: service_role만 허용 (데이터 정정용)
+CREATE POLICY "results_update_service" ON results FOR UPDATE
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "results_delete_service" ON results FOR DELETE
+    TO service_role
+    USING (true);
 
 -- =============================================
 -- 5. 패턴 로그 테이블
@@ -189,22 +282,33 @@ CREATE TABLE IF NOT EXISTS pattern_logs (
 );
 
 -- 패턴 로그 RLS 정책
+-- 패턴 로그는 디버깅/분석용, 조회 허용, 삽입은 service_role만
 ALTER TABLE pattern_logs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "pattern_logs_select" ON pattern_logs FOR SELECT USING (true);
-CREATE POLICY "pattern_logs_insert" ON pattern_logs FOR INSERT WITH CHECK (true);
+-- SELECT: 인증된 사용자 및 서비스 계정 허용 (분석용)
+CREATE POLICY "pattern_logs_select_service" ON pattern_logs FOR SELECT
+    TO service_role
+    USING (true);
+
+CREATE POLICY "pattern_logs_select_authenticated" ON pattern_logs FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- 대시보드 읽기용 (anon key)
+CREATE POLICY "pattern_logs_select_anon" ON pattern_logs FOR SELECT
+    TO anon
+    USING (true);
+
+-- INSERT: service_role만 허용 (패턴 실행 시 로깅)
+CREATE POLICY "pattern_logs_insert_service" ON pattern_logs FOR INSERT
+    TO service_role
+    WITH CHECK (true);
 
 -- =============================================
 -- 6. 인덱스 생성
 -- =============================================
 CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status);
 CREATE INDEX IF NOT EXISTS idx_videos_priority ON videos(priority DESC);
-CREATE INDEX IF NOT EXISTS idx_devices_status ON devices(status);
-CREATE INDEX IF NOT EXISTS idx_devices_pc_id ON devices(pc_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
-CREATE INDEX IF NOT EXISTS idx_tasks_video_id ON tasks(video_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_device_id ON tasks(device_id);
-CREATE INDEX IF NOT EXISTS idx_results_task_id ON results(task_id);
 CREATE INDEX IF NOT EXISTS idx_results_video_id ON results(video_id);
 CREATE INDEX IF NOT EXISTS idx_results_device_id ON results(device_id);
 CREATE INDEX IF NOT EXISTS idx_results_created_at ON results(created_at DESC);

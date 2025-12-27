@@ -33,6 +33,8 @@ var CONFIG = {
 };
 
 // ==================== 상태 ====================
+// 뮤텍스 락으로 race condition 방지
+var runningLock = threads.lock();
 var isRunning = false;
 var currentTask = null;
 var stats = {
@@ -395,23 +397,40 @@ function mainLoop() {
 events.observeKey();
 events.on("key_down", function(keyCode, event) {
     if (keyCode === 24) {  // Volume Up
-        if (!isRunning) {
-            isRunning = true;
-            threads.start(mainLoop);
+        // lock으로 race condition 방지
+        runningLock.lock();
+        try {
+            if (!isRunning) {
+                isRunning = true;
+                threads.start(mainLoop);
+            }
+        } finally {
+            runningLock.unlock();
         }
     } else if (keyCode === 25) {  // Volume Down
-        isRunning = false;
-        updateUI("⏸ 정지 요청됨");
+        runningLock.lock();
+        try {
+            isRunning = false;
+            updateUI("⏸ 정지 요청됨");
+        } finally {
+            runningLock.unlock();
+        }
     }
 });
 
 // 플로팅 윈도우 터치로 시작/정지
 floatyWindow.status.on("click", function() {
-    if (!isRunning) {
-        isRunning = true;
-        threads.start(mainLoop);
-    } else {
-        isRunning = false;
+    // lock으로 race condition 방지 (여러 번 빠르게 클릭해도 한 번만 시작)
+    runningLock.lock();
+    try {
+        if (!isRunning) {
+            isRunning = true;
+            threads.start(mainLoop);
+        } else {
+            isRunning = false;
+        }
+    } finally {
+        runningLock.unlock();
     }
 });
 
@@ -428,4 +447,3 @@ threads.start(mainLoop);
 
 // 유지
 setInterval(function() {}, 1000);
-

@@ -48,10 +48,17 @@ def get_db():
     return conn
 
 @contextmanager
-def db_transaction():
-    """트랜잭션 컨텍스트 매니저"""
+def db_transaction(immediate: bool = False):
+    """
+    트랜잭션 컨텍스트 매니저
+    
+    immediate: True일 경우 BEGIN IMMEDIATE로 즉시 쓰기 잠금 획득
+    """
     conn = get_db()
     try:
+        if immediate:
+            # SQLite 즉시 쓰기 잠금 획득 (동시성 처리용)
+            conn.execute("BEGIN IMMEDIATE")
         yield conn
         conn.commit()
     except Exception as e:
@@ -219,10 +226,7 @@ async def get_next_task(device_id: str = Query(..., description="기기 식별�
     
     동시성 처리: SQLite의 BEGIN IMMEDIATE로 잠금
     """
-    with db_transaction() as conn:
-        # BEGIN IMMEDIATE: 즉시 쓰기 잠금 획득
-        conn.execute("BEGIN IMMEDIATE")
-        
+    with db_transaction(immediate=True) as conn:
         # 가장 높은 우선순위의 pending 작업 선택
         cursor = conn.execute(
             """
@@ -568,8 +572,19 @@ async def reset_stuck_tasks(minutes: int = 30):
 async def clear_completed_tasks():
     """
     완료된 작업 정리
+    
+    task_results 테이블의 종속 행을 먼저 삭제한 후 tasks를 삭제합니다.
     """
     with db_transaction() as conn:
+        # 종속 테이블(task_results)의 관련 행 먼저 삭제
+        conn.execute(
+            """
+            DELETE FROM task_results 
+            WHERE task_id IN (SELECT id FROM tasks WHERE status IN ('completed', 'failed'))
+            """
+        )
+        
+        # 완료/실패된 작업 삭제
         cursor = conn.execute(
             "DELETE FROM tasks WHERE status IN ('completed', 'failed')"
         )

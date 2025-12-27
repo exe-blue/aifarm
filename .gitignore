@@ -78,3 +78,7 @@ ehthumbs.db
 
 # Claude local settings (contains sensitive paths/IPs)
 .claude/settings.local.json
+
+# Deployment files with sensitive data
+deploy/deploy_to_vultr.bat
+deploy/deploy.env
