@@ -17,36 +17,35 @@ Or on Windows:
 copy .claude\settings.local.json.example .claude\settings.local.json
 ```
 
-### 2. Update placeholder values
+### 2. Permission template
 
-Edit `.claude/settings.local.json` and replace the placeholder values:
-
-| Placeholder | Description | Example |
-|-------------|-------------|---------|
-| `<LOCAL_PROJECT_PATH>` | Your local project directory path | `d:\\exe.blue\\ai-fram` |
-| `<SERVER_IP>` | Your server's IP address | `192.168.1.100` |
-
-### 3. Example configuration
-
-After replacement, your file should look like:
+The example template provides a reasonable set of permissions for common deployment operations:
 
 ```json
 {
   "permissions": {
     "allow": [
       "Bash(ssh:*)",
-      "Bash(scp -o StrictHostKeyChecking=no \"d:\\\\your\\\\project\\\\path\\\\deploy\\\\vultr_setup.sh\" root@192.168.1.100:/root/)",
+      "Bash(scp:*)",
+      "Bash(ssh-keyscan:*)",
       "Bash(ping:*)",
       "Bash(tasklist:*)",
       "Bash(findstr:*)",
       "Bash(cat:*)",
       "Bash(where:*)",
       "Bash(dir:*)",
-      "Bash(tar:*)",
-      "Bash(scp:*)"
+      "Bash(tar:*)"
     ]
   }
 }
+```
+
+### 3. Adding custom permissions (optional)
+
+If you need more specific permissions, you can add them to the `allow` array. For example:
+
+```json
+"Bash(ssh root@your-server.com:*)"
 ```
 
 ## Important Notes
