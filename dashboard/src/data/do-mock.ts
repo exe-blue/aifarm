@@ -283,14 +283,14 @@ export const mockUnifiedLogs: UnifiedLog[] = [
     activityType: req.type,
     description: `[DO] ${req.title} - ${req.keyword}`,
     status: (() => {
+      // Note: 'pending' case removed as it's filtered out above
       switch (req.status) {
         case 'completed': return 'success' as const;
         case 'in_progress': return 'in_progress' as const;
         case 'failed': return 'failed' as const;
         case 'scheduled': return 'scheduled' as const;
         case 'cancelled': return 'cancelled' as const;
-        case 'pending': return 'pending' as const;
-        default: return 'pending' as const;
+        default: return 'in_progress' as const; // Fallback for any unexpected status
       }
     })(),
     timestamp: req.createdAt,
@@ -304,4 +304,3 @@ export const mockUnifiedLogs: UnifiedLog[] = [
     },
   })),
 ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-

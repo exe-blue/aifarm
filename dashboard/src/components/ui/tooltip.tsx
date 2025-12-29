@@ -18,14 +18,14 @@ function TooltipProvider({
   )
 }
 
+/**
+ * Tooltip component - requires a TooltipProvider ancestor.
+ * Ensure a single <TooltipProvider> wraps your app root (e.g., in layout.tsx).
+ */
 function Tooltip({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
-  return (
-    <TooltipProvider>
-      <TooltipPrimitive.Root data-slot="tooltip" {...props} />
-    </TooltipProvider>
-  )
+  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
 }
 
 function TooltipTrigger({

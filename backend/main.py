@@ -98,6 +98,10 @@ def init_db():
                 search_rank INTEGER,
                 liked INTEGER DEFAULT 0,
                 commented INTEGER DEFAULT 0,
+                subscribed INTEGER DEFAULT 0,
+                notification_set INTEGER DEFAULT 0,
+                shared INTEGER DEFAULT 0,
+                added_to_playlist INTEGER DEFAULT 0,
                 error_message TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (task_id) REFERENCES tasks(id)
@@ -147,6 +151,10 @@ class CompleteRequest(BaseModel):
     search_rank: Optional[int] = None
     liked: bool = False
     commented: bool = False
+    subscribed: bool = False
+    notification_set: bool = False
+    shared: bool = False
+    added_to_playlist: bool = False
     error_message: Optional[str] = None
 
 class StatusSummary(BaseModel):
@@ -301,14 +309,18 @@ async def complete_task(task_id: int, request: CompleteRequest):
         # 결과 기록
         conn.execute(
             """
-            INSERT INTO task_results 
-            (task_id, device_id, success, watch_duration, search_type, search_rank, liked, commented, error_message)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO task_results
+            (task_id, device_id, success, watch_duration, search_type, search_rank,
+             liked, commented, subscribed, notification_set, shared, added_to_playlist, error_message)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 task_id, request.device_id, int(request.success),
                 request.watch_duration, request.search_type, request.search_rank,
-                int(request.liked), int(request.commented), request.error_message
+                int(request.liked), int(request.commented),
+                int(request.subscribed), int(request.notification_set),
+                int(request.shared), int(request.added_to_playlist),
+                request.error_message
             )
         )
         

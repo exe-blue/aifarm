@@ -2,11 +2,12 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Github, ExternalLink } from 'lucide-react';
+import { Github } from 'lucide-react';
+import { Logo } from '@/components/common/Logo';
 
 export function Footer() {
   return (
-    <footer className="relative py-12 px-6 border-t border-border/30">
+    <footer className="relative py-12 px-6 border-t border-[#1f1f2e] bg-[#0a0a0f]">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo */}
@@ -14,16 +15,10 @@ export function Footer() {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="flex items-center gap-2"
+            className="flex items-center gap-3"
           >
-            <span 
-              className="text-2xl font-black"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              <span className="text-foreground">AI</span>
-              <span className="text-cyan-400">FARM</span>
-            </span>
-            <span className="text-xs text-muted-foreground px-2 py-1 rounded-full border border-border/50">
+            <Logo href="/dashboard" width={140} height={36} />
+            <span className="text-xs text-[#606070] px-2 py-1 rounded-full border border-[#1f1f2e]">
               v2.0
             </span>
           </motion.div>
@@ -34,18 +29,18 @@ export function Footer() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="flex items-center gap-6 text-sm text-muted-foreground"
+            className="flex items-center gap-6 text-sm text-[#a0a0b0]"
           >
-            <Link href="/dashboard" className="hover:text-cyan-400 transition-colors">
+            <Link href="/dashboard" className="hover:text-white transition-colors">
               Dashboard
             </Link>
-            <Link href="/dashboard/activities" className="hover:text-cyan-400 transition-colors">
-              Activities
+            <Link href="/dashboard/agents" className="hover:text-white transition-colors">
+              Agents
             </Link>
-            <Link href="/dashboard/channels" className="hover:text-cyan-400 transition-colors">
+            <Link href="/dashboard/channels" className="hover:text-white transition-colors">
               Channels
             </Link>
-            <Link href="/dashboard/devices" className="hover:text-cyan-400 transition-colors">
+            <Link href="/dashboard/devices" className="hover:text-white transition-colors">
               Devices
             </Link>
           </motion.div>
@@ -59,20 +54,12 @@ export function Footer() {
             className="flex items-center gap-4"
           >
             <a
-              href="https://github.com"
+              href="https://github.com/exe-blue/aifarm"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              className="text-[#a0a0b0] hover:text-white transition-colors"
             >
               <Github className="w-5 h-5" />
-            </a>
-            <a
-              href="#"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ExternalLink className="w-5 h-5" />
             </a>
           </motion.div>
         </div>
@@ -83,14 +70,14 @@ export function Footer() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.3 }}
-          className="mt-8 pt-6 border-t border-border/30 text-center text-xs text-muted-foreground"
+          className="mt-8 pt-6 border-t border-[#1f1f2e] text-center text-xs text-[#606070]"
         >
           <p>
-            Built with AI Agents • Powered by 600 Devices • 
-            <span className="text-cyan-400"> 목표: 글로벌 1위</span>
+            AIFARM • Powered by AI Agents •{' '}
+            <span className="text-purple-400">YouTube Intelligence on Autopilot</span>
           </p>
           <p className="mt-2 opacity-50">
-            Server: 158.247.210.152 • 30 Phoneboards × 20 Devices
+            © 2025 AIFARM • All rights reserved
           </p>
         </motion.div>
       </div>

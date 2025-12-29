@@ -60,11 +60,13 @@ CREATE TABLE channel_stats (
   atk INTEGER DEFAULT 0,
   def INTEGER DEFAULT 0,
   spd INTEGER DEFAULT 0,
-  int INTEGER DEFAULT 0,
+  intelligence INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
+
+> **Note:** The column `intelligence` was renamed from `int` to avoid conflicts with SQL reserved words.
 
 ---
 

@@ -1,12 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Play, Bot, Smartphone, Video } from 'lucide-react';
+import { ArrowRight, Play, Bot, Smartphone, Video, X } from 'lucide-react';
 import Link from 'next/link';
 
 export function HeroSection() {
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0a0a0f]">
       {/* Subtle Background Gradient */}
@@ -75,6 +77,8 @@ export function HeroSection() {
               size="lg"
               variant="outline"
               className="btn-secondary text-lg px-8 py-6"
+              onClick={() => setIsDemoOpen(true)}
+              aria-label="Watch Demo Video"
             >
               <Play className="mr-2 w-5 h-5" />
               Watch Demo
@@ -97,6 +101,45 @@ export function HeroSection() {
 
       {/* Bottom Fade */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0a0a0f] to-transparent" />
+
+      {/* Demo Modal */}
+      {isDemoOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setIsDemoOpen(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="relative w-full max-w-4xl mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsDemoOpen(false)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+              aria-label="Close demo video"
+            >
+              <X className="w-8 h-8" />
+            </button>
+            <div className="bg-[#12121a] rounded-lg border border-[#1f1f2e] p-8 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-600/20 flex items-center justify-center">
+                <Play className="w-8 h-8 text-purple-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Demo Coming Soon</h3>
+              <p className="text-[#a0a0b0] mb-6">
+                데모 영상이 곧 준비됩니다. 지금 로그인하여 AI Farm을 직접 체험해 보세요.
+              </p>
+              <Link href="/login">
+                <Button className="btn-primary">
+                  로그인하고 시작하기
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </section>
   );
 }

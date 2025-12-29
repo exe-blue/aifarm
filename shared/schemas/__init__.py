@@ -4,4 +4,5 @@ from .device import *
 from .task import *
 from .result import *
 from .pattern import *
+from .persona import *
 

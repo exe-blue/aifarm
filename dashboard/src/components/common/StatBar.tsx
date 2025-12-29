@@ -67,7 +67,9 @@ export function StatBar({
   showValue = true,
   animated = true,
 }: StatBarProps) {
-  const percentage = Math.min((value / maxValue) * 100, 100);
+  // Validate maxValue to prevent NaN or incorrect values
+  const safeValue = Math.max(0, value);
+  const percentage = maxValue <= 0 ? 0 : Math.min((safeValue / maxValue) * 100, 100);
   const colors = colorMap[color];
 
   return (

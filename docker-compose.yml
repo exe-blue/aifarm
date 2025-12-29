@@ -1,146 +1,123 @@
+# ============================================
+# DoAi.Me - Docker Compose 구성
+# ============================================
+# 최종 기술 스택 (Orion 결정):
+# - Gateway: Node.js + Express + adbkit (기기 관리)
+# - Backend: Python + FastAPI (복잡한 계산)
+# - Database: Supabase (클라우드)
+# ============================================
+
 version: '3.8'
 
 services:
-  # PostgreSQL 데이터베이스
-  postgres:
-    image: postgres:15
-    container_name: yt-automation-db
+  # ============================================
+  # Gateway Server (Node.js)
+  # ============================================
+  # 역할: 600대 Android 기기 연결 관리 및 명령 전송
+  # 왜 Node.js? adbkit의 trackDevices()가 비동기 기기 추적에 우수
+  doai-gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: doai-gateway
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
     environment:
-      POSTGRES_DB: youtube_automation
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-securepassword123}
+      - NODE_ENV=production
+      - GATEWAY_PORT=3100
+      - ADB_HOST=host.docker.internal  # 호스트의 ADB 서버 접근
+      - ADB_PORT=5037
+      - LOG_LEVEL=info
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./shared/database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d youtube_automation"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./gateway/logs:/app/logs
+      - /dev/bus/usb:/dev/bus/usb  # USB 장치 접근 (Linux)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - doai-net
 
-  # Redis 메시지 큐
-  redis:
-    image: redis:7-alpine
-    container_name: yt-automation-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # API Gateway
-  api-gateway:
-    build: ./services/api-gateway
-    container_name: yt-automation-gateway
+  # ============================================
+  # Backend API Server (Python/FastAPI)
+  # ============================================
+  # 역할: 복잡한 계산 (타락도, 의사결정)
+  # 단순 계산(유지비)은 Supabase Database Function 사용
+  doai-api:
+    build:
+      context: ./backend/api
+      dockerfile: Dockerfile
+    container_name: doai-api
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      - VIDEO_SERVICE_URL=http://video-service:8001
-      - DEVICE_SERVICE_URL=http://device-service:8002
-      - TASK_SERVICE_URL=http://task-service:8003
-      - PATTERN_SERVICE_URL=http://pattern-service:8004
-      - RESULT_SERVICE_URL=http://result-service:8005
-      - API_KEYS=${API_KEYS:-test-key-123,admin-key-456}
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      # Supabase 연결
+      - DOAI_ME_SUPABASE_URL=${DOAI_ME_SUPABASE_URL}
+      - DOAI_ME_SUPABASE_KEY=${DOAI_ME_SUPABASE_KEY}
+      # OpenAI (의사결정 보조)
+      - DOAI_ME_OPENAI_API_KEY=${DOAI_ME_OPENAI_API_KEY}
+      # 경제 시스템 설정
+      - MAINTENANCE_BASE_COST=10.0
+      - MAINTENANCE_MIN_COST=5.0
+      - MAINTENANCE_MAX_COST=50.0
+      - CORRUPTION_DECAY_RATE=0.001
+      - MAX_CORRUPTION_PER_COMMISSION=0.05
+    volumes:
+      - ./backend/api:/app
+    networks:
+      - doai-net
     depends_on:
-      - postgres
-      - redis
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - doai-gateway
 
-  # Video Service
-  video-service:
-    build: ./services/video-service
-    container_name: yt-automation-video
+  # ============================================
+  # n8n Workflow Automation
+  # ============================================
+  # 역할: 오케스트레이션 (두뇌)
+  # - 스케줄링 (매일 유지비 차감)
+  # - 워크플로우 자동화
+  # - Gateway/Backend 연결
+  doai-n8n:
+    image: n8nio/n8n:latest
+    container_name: doai-n8n
+    restart: unless-stopped
     ports:
-      - "8001:8001"
+      - "5678:5678"
     environment:
-      - DATABASE_URL=postgresql://admin:${DB_PASSWORD:-securepassword123}@postgres:5432/youtube_automation
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-doaime2025}
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678}
+      - GENERIC_TIMEZONE=Asia/Seoul
+      # DoAi.Me 서비스 연결
+      - DOAI_GATEWAY_URL=http://doai-gateway:3100
+      - DOAI_API_URL=http://doai-api:8000
+      # Supabase 직접 연결 (간단한 쿼리용)
+      - DOAI_ME_SUPABASE_URL=${DOAI_ME_SUPABASE_URL}
+      - DOAI_ME_SUPABASE_KEY=${DOAI_ME_SUPABASE_KEY}
+    volumes:
+      - doai_n8n_data:/home/node/.n8n
+      - ./backend/n8n/workflows:/home/node/workflows:ro
+    networks:
+      - doai-net
 
-  # Device Service
-  device-service:
-    build: ./services/device-service
-    container_name: yt-automation-device
-    ports:
-      - "8002:8002"
-    environment:
-      - DATABASE_URL=postgresql://admin:${DB_PASSWORD:-securepassword123}@postgres:5432/youtube_automation
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  # Task Service
-  task-service:
-    build: ./services/task-service
-    container_name: yt-automation-task
-    ports:
-      - "8003:8003"
-    environment:
-      - DATABASE_URL=postgresql://admin:${DB_PASSWORD:-securepassword123}@postgres:5432/youtube_automation
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  # Human Pattern Service
-  pattern-service:
-    build: ./services/human-pattern-service
-    container_name: yt-automation-pattern
-    ports:
-      - "8004:8004"
-    environment:
-      - REDIS_URL=redis://redis:6379
-
-  # Result Service
-  result-service:
-    build: ./services/result-service
-    container_name: yt-automation-result
-    ports:
-      - "8005:8005"
-    environment:
-      - DATABASE_URL=postgresql://admin:${DB_PASSWORD:-securepassword123}@postgres:5432/youtube_automation
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  # Frontend Dashboard (개발용)
-  # frontend:
-  #   build: ./frontend
-  #   container_name: yt-automation-frontend
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - VITE_API_URL=http://localhost:8000
-  #   depends_on:
-  #     - api-gateway
-
-volumes:
-  postgres_data:
-  redis_data:
-
+# ============================================
+# Networks
+# ============================================
 networks:
-  default:
-    name: yt-automation-network
+  doai-net:
+    name: doai-net
+    driver: bridge
 
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  doai_n8n_data:
+    name: doai-n8n-data

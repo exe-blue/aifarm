@@ -112,13 +112,22 @@ export function ChannelsShowcase() {
                     </span>
                   </div>
                   <div className="h-2 rounded-full bg-cyan-500/20 overflow-hidden">
-                    <motion.div
-                      className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400"
-                      initial={{ width: 0 }}
-                      whileInView={{ width: `${(channel.experiencePoints / channel.experienceToNextLevel) * 100}%` }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 1, ease: 'easeOut' }}
-                    />
+                    {(() => {
+                      // Compute safe percentage to prevent NaN and clamp between 0-100%
+                      const rawPercent = channel.experienceToNextLevel <= 0 
+                        ? 0 
+                        : (channel.experiencePoints / channel.experienceToNextLevel) * 100;
+                      const safePercent = Math.max(0, Math.min(100, Number.isFinite(rawPercent) ? rawPercent : 0));
+                      return (
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400"
+                          initial={{ width: 0 }}
+                          whileInView={{ width: `${safePercent}%` }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 1, ease: 'easeOut' }}
+                        />
+                      );
+                    })()}
                   </div>
                 </div>
               </GlowCard>

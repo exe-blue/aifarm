@@ -1,7 +1,4 @@
 'use client';
-
-export const dynamic = 'force-dynamic';
-
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
@@ -147,7 +144,7 @@ export default function DevicesPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-10 md:grid-cols-20 gap-1">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-6 md:gap-4 lg:grid-cols-12 lg:gap-6">
             {Array.from({ length: 20 }, (_, i) => (
               <div
                 key={i}
