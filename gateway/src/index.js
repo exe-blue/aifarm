@@ -50,6 +50,9 @@ const dispatchRouter = require('./api/routes/dispatch');
 const streamRouter = require('./api/routes/stream');
 const discoveryRouter = require('./api/routes/discovery');
 
+// OpenAI Integration
+const aiRouter = require('./api/routes/ai');
+
 // Stream Server (Legacy, Iframe용)
 const StreamServer = require('./stream/server');
 
@@ -111,7 +114,7 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '20mb' })); // Base64 이미지 처리를 위해 크기 제한 증가
 
 // 정적 파일
 app.use('/stream', express.static(path.join(__dirname, '../public/stream')));
@@ -153,6 +156,9 @@ app.use('/api/files', filesRouter);
 app.use('/api/dispatch', dispatchRouter);
 app.use('/api/discovery', discoveryRouter);  // v3.0
 app.use('/stream', streamRouter);
+
+// OpenAI Integration
+app.use('/api/ai', aiRouter);
 
 // React SPA 라우팅 (클라이언트 사이드 라우팅 지원)
 const fs = require('fs');

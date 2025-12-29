@@ -11,12 +11,14 @@ const SyncService = require('./sync/SyncService');
 const YouTubeParser = require('./youtube/YouTubeParser');
 const CreditService = require('./credit/CreditService');
 const PoVService = require('./pov/PoVService');
+const OpenAIService = require('./openai');
 
 module.exports = {
     PersonaService,
     SyncService,
     YouTubeParser,
     CreditService,
-    PoVService
+    PoVService,
+    OpenAIService
 };
 
