@@ -1,28 +1,40 @@
 """
 PC Agent - 마스터 PC에서 실행되는 워커
-Laixi와 중앙 서버 사이의 브릿지 역할
+Laixi와 Supabase(DB) 사이의 브릿지 역할
 
-실행: python pc_agent.py --pc-id PC1 --server https://your-server.com
+실행 방법:
+  python pc_agent.py --pc-id 1
+
+환경 변수 (.env):
+  SUPABASE_URL=https://xxx.supabase.co
+  SUPABASE_SERVICE_ROLE_KEY=xxx
+  PC_ID=1 (선택, CLI 인자로 대체 가능)
 """
+
 import asyncio
 import argparse
-import json
+import os
 import subprocess
-import httpx
-from datetime import datetime
-from typing import Optional, Dict, Any
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any, List
 import logging
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
 
 # shared 모듈 경로 추가
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from shared.laixi_client import LaixiClient, LaixiConfig
+from shared.supabase_client import DeviceSync, JobSync, get_client
 
 # 로깅 설정
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, LOG_LEVEL),
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
         logging.FileHandler('pc_agent.log', encoding='utf-8'),
@@ -34,69 +46,107 @@ logger = logging.getLogger(__name__)
 
 class PCAgent:
     """
-    PC Agent - 중앙 서버와 Laixi 사이의 브릿지
+    PC Agent - Supabase와 Laixi 사이의 브릿지
     
     역할:
-    1. 중앙 서버에서 작업 가져오기 (폴링)
-    2. Laixi에 작업 전달 (WebSocket)
-    3. 결과를 중앙 서버에 보고
-    4. 기기 상태 하트비트 전송
+    1. ADB 기기를 Supabase devices 테이블에 동기화 (Upsert)
+    2. 대기 중인 작업(jobs)을 가져와 Laixi로 실행
+    3. 작업 결과를 Supabase에 보고
+    4. 주기적 하트비트로 기기 상태 유지
     """
     
-    def __init__(self, pc_id: str, server_url: str, api_key: str):
+    # 상수 정의 (매직 넘버 방지)
+    HEARTBEAT_INTERVAL_SEC = 10
+    TASK_POLL_INTERVAL_SEC = 5
+    ADB_TIMEOUT_SEC = 10
+    VIDEO_LOAD_WAIT_SEC = 3
+    DEFAULT_WATCH_TIME_SEC = 30
+    
+    def __init__(self, pc_id: int):
+        """
+        Args:
+            pc_id: 워크스테이션 ID (1, 2, 3...)
+        """
         self.pc_id = pc_id
-        self.server_url = server_url.rstrip('/')
-        self.api_key = api_key
-
         self.is_running = False
-        self.current_task: Optional[Dict] = None
-        self.devices: Dict[str, Dict] = {}  # device_id -> device_info
-
-        # HTTP 클라이언트
-        self.http_client = httpx.AsyncClient(
-            timeout=30.0,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-        )
-
+        
+        # 기기 관리: serial_number -> device_info (DB 데이터)
+        self.devices: Dict[str, Dict] = {}
+        
+        # 현재 실행 중인 작업: device_serial -> job
+        self.running_jobs: Dict[str, Dict] = {}
+        
+        # Supabase 동기화 클라이언트
+        self.device_sync = DeviceSync(pc_id)
+        self.job_sync = JobSync(pc_id)
+        
         # Laixi 클라이언트 (ws://127.0.0.1:22221/)
-        self.laixi = LaixiClient()
+        laixi_url = os.getenv("LAIXI_WS_URL", "ws://127.0.0.1:22221/")
+        self.laixi = LaixiClient(LaixiConfig(ws_url=laixi_url))
+        
+        logger.info(f"PC Agent 초기화: PC_ID={pc_id}")
     
     async def start(self):
         """에이전트 시작"""
-        logger.info(f"PC Agent 시작: PC_ID={self.pc_id}")
-        logger.info(f"서버: {self.server_url}")
-
+        logger.info(f"=== PC Agent 시작 (PC{self.pc_id}) ===")
         self.is_running = True
-
-        # 1. Laixi 연결
-        if not await self.laixi.connect():
-            logger.error("Laixi 연결 실패")
-            return
-
-        # 2. 연결된 기기 등록
-        await self.register_devices()
-
-        # 3. 병렬 태스크 시작
-        await asyncio.gather(
-            self.heartbeat_loop(),      # 하트비트 (10초마다)
-            self.task_polling_loop()    # 작업 폴링 (5초마다)
-        )
+        
+        try:
+            # 1. Supabase 연결 테스트
+            logger.info("Supabase 연결 확인...")
+            get_client()  # 연결 실패 시 예외 발생
+            logger.info("✓ Supabase 연결 성공")
+            
+            # 2. Laixi 연결
+            logger.info("Laixi 연결 중...")
+            if not await self.laixi.connect():
+                logger.error("✗ Laixi 연결 실패 - touping.exe가 실행 중인지 확인하세요")
+                return
+            logger.info("✓ Laixi 연결 성공")
+            
+            # 3. 연결된 기기 Supabase에 동기화
+            await self.sync_devices_to_supabase()
+            
+            # 4. 병렬 태스크 시작
+            await asyncio.gather(
+                self.heartbeat_loop(),      # 하트비트 (10초마다)
+                self.task_polling_loop(),   # 작업 폴링 (5초마다)
+                self.device_monitor_loop()  # 기기 모니터링 (30초마다)
+            )
+            
+        except KeyboardInterrupt:
+            logger.info("종료 요청 감지...")
+        except Exception as e:
+            logger.error(f"에이전트 실행 오류: {e}")
+            raise
+        finally:
+            await self.stop()
     
     async def stop(self):
         """에이전트 중지"""
-        logger.info("PC Agent 중지 중...")
+        logger.info("PC Agent 종료 중...")
         self.is_running = False
-        await self.http_client.aclose()
+        
+        # 모든 기기 offline 처리
+        try:
+            await self.device_sync.set_offline_all()
+        except Exception as e:
+            logger.error(f"기기 offline 처리 실패: {e}")
+        
+        # Laixi 연결 해제
         await self.laixi.disconnect()
+        
+        logger.info("=== PC Agent 종료 완료 ===")
     
     # ==================== 기기 관리 ====================
     
-    async def register_devices(self):
-        """ADB로 연결된 기기 등록"""
-        logger.info("연결된 기기 검색 중...")
+    async def sync_devices_to_supabase(self):
+        """
+        ADB 연결된 기기를 Supabase devices 테이블에 동기화
+        
+        시작 시 한 번 호출, 이후 device_monitor_loop에서 주기적 확인
+        """
+        logger.info("ADB 기기 검색 및 Supabase 동기화...")
         
         try:
             # ADB 기기 목록 가져오기
@@ -104,39 +154,49 @@ class PCAgent:
                 ['adb', 'devices'],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=self.ADB_TIMEOUT_SEC
             )
             
             lines = result.stdout.strip().split('\n')[1:]  # 첫 줄 헤더 제외
+            found_devices = []
             
             for line in lines:
                 if '\tdevice' in line:
                     serial = line.split('\t')[0]
-                    
-                    # 서버에 기기 등록
-                    response = await self.http_client.post(
-                        f"{self.server_url}/devices",
-                        json={
-                            "serial_number": serial,
-                            "pc_id": self.pc_id,
-                            "model": await self.get_device_model(serial)
-                        }
-                    )
-                    
-                    if response.status_code == 200:
-                        device_data = response.json()
-                        self.devices[device_data['id']] = device_data
-                        logger.info(f"기기 등록 완료: {serial}")
-                    else:
-                        logger.warning(f"기기 등록 실패: {serial}")
+                    model = await self._get_device_model(serial)
+                    found_devices.append({
+                        "serial_number": serial,
+                        "model": model
+                    })
             
-            logger.info(f"총 {len(self.devices)}대 기기 등록됨")
+            if not found_devices:
+                logger.warning("ADB 연결된 기기 없음")
+                return
             
+            # Supabase에 일괄 Upsert
+            synced = await self.device_sync.bulk_upsert(found_devices)
+            
+            # 로컬 캐시 업데이트
+            for device in synced:
+                serial = device.get("serial_number")
+                if serial:
+                    self.devices[serial] = device
+            
+            logger.info(f"✓ {len(self.devices)}대 기기 동기화 완료")
+            
+            # 기기 목록 출력
+            for serial, info in self.devices.items():
+                logger.info(f"  - {serial} ({info.get('model', 'Unknown')}) [id={info.get('id')}]")
+            
+        except subprocess.TimeoutExpired:
+            logger.error("ADB 명령 타임아웃")
+        except FileNotFoundError:
+            logger.error("ADB를 찾을 수 없음 - PATH에 adb가 있는지 확인하세요")
         except Exception as e:
-            logger.error(f"기기 등록 오류: {e}")
+            logger.error(f"기기 동기화 오류: {e}")
     
-    async def get_device_model(self, serial: str) -> str:
-        """기기 모델명 가져오기"""
+    async def _get_device_model(self, serial: str) -> str:
+        """기기 모델명 가져오기 (ADB)"""
         try:
             result = subprocess.run(
                 ['adb', '-s', serial, 'shell', 'getprop', 'ro.product.model'],
@@ -145,19 +205,17 @@ class PCAgent:
                 timeout=5
             )
             return result.stdout.strip() or "Unknown"
-        except:
+        except Exception:
             return "Unknown"
     
-    async def get_device_health(self, serial: str) -> Dict:
-        """기기 상태 가져오기"""
+    async def _get_device_health(self, serial: str) -> Dict:
+        """기기 헬스 정보 가져오기 (ADB)"""
         health = {
             "battery_temp": None,
-            "cpu_usage": None,
             "battery_level": None
         }
         
         try:
-            # 배터리 정보
             result = subprocess.run(
                 ['adb', '-s', serial, 'shell', 'dumpsys', 'battery'],
                 capture_output=True,
@@ -167,210 +225,195 @@ class PCAgent:
             
             for line in result.stdout.split('\n'):
                 if 'temperature' in line.lower():
+                    # 배터리 온도는 10분의 1 단위 (예: 320 → 32.0°C)
                     temp = int(line.split(':')[1].strip()) / 10
                     health['battery_temp'] = temp
-                elif 'level' in line.lower():
+                elif 'level' in line.lower() and 'level:' in line.lower():
                     health['battery_level'] = int(line.split(':')[1].strip())
-            
+                    
         except Exception as e:
-            logger.debug(f"헬스 정보 가져오기 실패: {e}")
+            logger.debug(f"헬스 정보 조회 실패: {serial} - {e}")
         
         return health
     
-    # ==================== 서버 통신 ====================
+    # ==================== 주기적 태스크 ====================
     
     async def heartbeat_loop(self):
-        """하트비트 전송 (10초마다)"""
+        """
+        하트비트 전송 (10초마다)
+        
+        Supabase devices 테이블의 last_seen 업데이트
+        """
         while self.is_running:
             try:
-                for device_id, device_info in self.devices.items():
-                    health = await self.get_device_health(device_info['serial_number'])
-                    
-                    await self.http_client.post(
-                        f"{self.server_url}/devices/{device_id}/heartbeat",
-                        json=health
-                    )
+                for serial in list(self.devices.keys()):
+                    health = await self._get_device_health(serial)
+                    await self.device_sync.heartbeat(serial, health)
                 
                 logger.debug(f"하트비트 전송: {len(self.devices)}대")
                 
             except Exception as e:
                 logger.error(f"하트비트 오류: {e}")
             
-            await asyncio.sleep(10)
+            await asyncio.sleep(self.HEARTBEAT_INTERVAL_SEC)
     
     async def task_polling_loop(self):
-        """작업 폴링 (5초마다)"""
+        """
+        작업 폴링 (5초마다)
+        
+        대기 중인 기기에 할당된 pending 작업을 가져와 실행
+        """
         while self.is_running:
             try:
-                # 현재 작업 중이면 스킵
-                if self.current_task:
-                    await asyncio.sleep(5)
-                    continue
-                
                 # 대기 중인 기기 찾기
-                idle_device = self.find_idle_device()
-                if not idle_device:
-                    await asyncio.sleep(5)
-                    continue
-                
-                # 작업 요청
-                response = await self.http_client.get(
-                    f"{self.server_url}/tasks/next",
-                    params={"device_id": idle_device['id']}
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
+                for serial, device_info in list(self.devices.items()):
+                    # 이미 작업 중이면 스킵
+                    if serial in self.running_jobs:
+                        continue
                     
-                    if data.get('task'):
-                        task = data['task']
-                        video = data.get('video', {})
-                        
-                        logger.info(f"새 작업 수신: {task['id'][:8]}...")
-                        
-                        # Laixi로 작업 전달
-                        await self.execute_task(task, video, idle_device)
+                    device_id = device_info.get('id')
+                    if not device_id:
+                        continue
+                    
+                    # 해당 기기의 대기 작업 조회
+                    job = await self.job_sync.get_pending_job(device_id)
+                    
+                    if job:
+                        # 작업 실행 (비동기)
+                        asyncio.create_task(
+                            self._execute_job(serial, job)
+                        )
                 
             except Exception as e:
-                logger.error(f"폴링 오류: {e}")
+                logger.error(f"작업 폴링 오류: {e}")
             
-            await asyncio.sleep(5)
+            await asyncio.sleep(self.TASK_POLL_INTERVAL_SEC)
     
-    def find_idle_device(self) -> Optional[Dict]:
-        """대기 중인 기기 찾기"""
-        for device_id, device_info in self.devices.items():
-            if device_info.get('status') in ['idle', None]:
-                return {'id': device_id, **device_info}
-        return None
+    async def device_monitor_loop(self):
+        """
+        기기 모니터링 (30초마다)
+        
+        ADB 연결 상태 확인 및 새 기기 발견 시 등록
+        """
+        while self.is_running:
+            await asyncio.sleep(30)
+            
+            try:
+                # ADB 기기 목록 확인
+                result = subprocess.run(
+                    ['adb', 'devices'],
+                    capture_output=True,
+                    text=True,
+                    timeout=self.ADB_TIMEOUT_SEC
+                )
+                
+                lines = result.stdout.strip().split('\n')[1:]
+                current_serials = set()
+                
+                for line in lines:
+                    if '\tdevice' in line:
+                        serial = line.split('\t')[0]
+                        current_serials.add(serial)
+                        
+                        # 새 기기 발견
+                        if serial not in self.devices:
+                            logger.info(f"새 기기 발견: {serial}")
+                            model = await self._get_device_model(serial)
+                            device = await self.device_sync.upsert_device(
+                                serial, "idle", model
+                            )
+                            if device:
+                                self.devices[serial] = device
+                
+                # 연결 해제된 기기 처리
+                disconnected = set(self.devices.keys()) - current_serials
+                for serial in disconnected:
+                    logger.warning(f"기기 연결 해제: {serial}")
+                    await self.device_sync.set_status(serial, "offline")
+                    del self.devices[serial]
+                
+            except Exception as e:
+                logger.error(f"기기 모니터링 오류: {e}")
     
-    # ==================== Laixi 연동 ====================
+    # ==================== 작업 실행 ====================
     
-    async def execute_task(self, task: Dict, video: Dict, device: Dict):
-        """Laixi로 작업 실행"""
-        self.current_task = task
-
+    async def _execute_job(self, serial: str, job: Dict):
+        """
+        Laixi를 통해 작업 실행
+        
+        Args:
+            serial: 기기 시리얼 번호
+            job: 작업 데이터 (videos 정보 포함)
+        """
+        job_id = job.get('id')
+        video = job.get('videos', {})  # JOIN된 영상 정보
+        
+        logger.info(f"작업 시작: job={job_id}, device={serial}")
+        
+        # 실행 중 표시
+        self.running_jobs[serial] = job
+        await self.device_sync.set_status(serial, "busy")
+        
         try:
-            # 작업 시작 알림
-            await self.http_client.post(
-                f"{self.server_url}/tasks/{task['id']}/start"
-            )
-
-            # Laixi를 통해 YouTube 앱 실행 및 시청
-            serial = device.get('serial_number', '')
+            # 1. 작업 시작 알림
+            await self.job_sync.start_job(job_id)
+            
+            # 2. YouTube 영상 실행
             video_url = video.get('url', '')
-
-            logger.info(f"Laixi로 작업 실행: {task['id'][:8]}... on {serial}")
-
-            # 1. YouTube 앱 실행
+            if not video_url:
+                raise ValueError("영상 URL이 없습니다")
+            
+            logger.info(f"YouTube 실행: {video_url[:50]}...")
+            
             await self.laixi.execute_adb(
                 serial,
                 f"am start -a android.intent.action.VIEW -d {video_url}"
             )
-            await asyncio.sleep(3)
-
-            # 2. 시청 시간
-            watch_time = task.get('watch_time_seconds', 30)
+            
+            # 영상 로딩 대기
+            await asyncio.sleep(self.VIDEO_LOAD_WAIT_SEC)
+            
+            # 3. 시청 시간
+            watch_time = video.get('duration') or self.DEFAULT_WATCH_TIME_SEC
             logger.info(f"시청 중... ({watch_time}초)")
             await asyncio.sleep(watch_time)
-
-            # 3. 작업 완료 처리
-            await self.on_task_complete({
-                "task_id": task['id'],
-                "device_id": device['id'],
-                "watch_time": watch_time,
-                "total_duration": watch_time,
-                "liked": False,
-                "commented": False
-            })
-
-        except Exception as e:
-            logger.error(f"작업 실행 오류: {e}")
-            await self.on_task_error({
-                "task_id": task['id'],
-                "error": str(e)
-            })
-    
-    async def on_task_complete(self, data: Dict):
-        """작업 완료 처리"""
-        if not self.current_task:
-            return
-        
-        task_id = self.current_task['id']
-        
-        try:
-            # 결과 전송
-            await self.http_client.post(
-                f"{self.server_url}/tasks/{task_id}/complete",
-                params={"success": True}
-            )
             
-            # 상세 결과 전송
-            await self.http_client.post(
-                f"{self.server_url}/results",
-                json={
-                    "task_id": task_id,
-                    "device_id": data.get('device_id', ''),
-                    "watch_time": data.get('watch_time', 0),
-                    "total_duration": data.get('total_duration', 0),
-                    "liked": data.get('liked', False),
-                    "commented": data.get('commented', False),
-                    "comment_text": data.get('comment_text'),
-                    "search_type": data.get('search_type', 1),
-                    "search_rank": data.get('search_rank', 0)
-                }
-            )
-            
-            logger.info(f"작업 완료: {task_id[:8]}...")
+            # 4. 작업 완료
+            await self.job_sync.complete_job(job_id, watch_time)
+            logger.info(f"작업 완료: job={job_id}")
             
         except Exception as e:
-            logger.error(f"완료 보고 오류: {e}")
-        
+            error_msg = str(e)
+            logger.error(f"작업 실패: job={job_id} - {error_msg}")
+            await self.job_sync.fail_job(job_id, error_msg)
+            
         finally:
-            self.current_task = None
-    
-    async def on_task_error(self, data: Dict):
-        """작업 실패 처리"""
-        if not self.current_task:
-            return
-        
-        task_id = self.current_task['id']
-        error_msg = data.get('error', 'Unknown error')
-        
-        try:
-            await self.http_client.post(
-                f"{self.server_url}/tasks/{task_id}/complete",
-                params={"success": False, "error_message": error_msg}
-            )
-            
-            logger.error(f"작업 실패: {task_id[:8]}... - {error_msg}")
-            
-        except Exception as e:
-            logger.error(f"실패 보고 오류: {e}")
-        
-        finally:
-            self.current_task = None
+            # 실행 완료 처리
+            self.running_jobs.pop(serial, None)
+            await self.device_sync.set_status(serial, "idle")
 
 
 # ==================== 메인 ====================
 
 async def main():
-    parser = argparse.ArgumentParser(description='PC Agent for YouTube Automation with Laixi')
-    parser.add_argument('--pc-id', required=True, help='PC 식별자 (예: PC1)')
-    parser.add_argument('--server', required=True, help='중앙 서버 URL')
-    parser.add_argument('--api-key', default='test-key-123', help='API 키')
-
-    args = parser.parse_args()
-
-    agent = PCAgent(
-        pc_id=args.pc_id,
-        server_url=args.server,
-        api_key=args.api_key
+    parser = argparse.ArgumentParser(
+        description='PC Agent for YouTube Automation with Laixi + Supabase'
     )
-
+    parser.add_argument(
+        '--pc-id',
+        type=int,
+        default=int(os.getenv('PC_ID', '1')),
+        help='워크스테이션 ID (기본값: 환경변수 PC_ID 또는 1)'
+    )
+    
+    args = parser.parse_args()
+    
+    agent = PCAgent(pc_id=args.pc_id)
+    
     try:
         await agent.start()
     except KeyboardInterrupt:
-        logger.info("종료 요청...")
+        logger.info("Ctrl+C 감지...")
     finally:
         await agent.stop()
 
