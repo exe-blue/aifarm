@@ -49,6 +49,12 @@ frontend/build/
 *~
 .DS_Store
 
+# Visual Studio user-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
 # Logs
 logs/
 *.log
