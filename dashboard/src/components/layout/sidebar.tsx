@@ -16,10 +16,14 @@ import {
   Send,
   Settings,
   LogOut,
+  FileText,
+  Youtube,
 } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: '대시보드' },
+  { href: '/manifesto', icon: FileText, label: 'Manifesto', special: true },
+  { href: '/dashboard/youtube-upload', icon: Youtube, label: 'YouTube 업로드' },
   { href: '/dashboard/activities', icon: Activity, label: '활동' },
   { href: '/dashboard/channels', icon: Tv, label: '채널' },
   { href: '/dashboard/ranking', icon: Trophy, label: '랭킹' },
@@ -48,15 +52,19 @@ export function Sidebar() {
           const isActive = pathname === item.href || 
             (item.href !== '/dashboard' && pathname.startsWith(item.href));
           
+          // Manifesto는 특별 스타일
+          const isSpecial = item.special;
+          
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
-                isActive
+                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-300',
+                isSpecial && 'font-light italic border border-border/50 hover:border-primary/50',
+                !isSpecial && (isActive
                   ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground')
               )}
             >
               <item.icon className="w-4 h-4" />

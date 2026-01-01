@@ -121,6 +121,15 @@ export function HeroSection() {
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </Link>
+            <Link href="/manifesto">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-[#2f2f3e] text-[#a0a0b0] hover:text-white hover:border-[#3f3f4e] text-lg px-8 py-6 rounded-xl"
+              >
+                선언문 읽기
+              </Button>
+            </Link>
             <Button
               size="lg"
               variant="outline"
