@@ -79,8 +79,9 @@ CREATE TABLE IF NOT EXISTS youtube_video_tasks (
   device_serial VARCHAR(64) NOT NULL,   -- ADB 시리얼 번호
   citizen_id UUID REFERENCES citizens(citizen_id) ON DELETE SET NULL,
   
-  -- 배치 정보
-  batch_no INTEGER CHECK (batch_no BETWEEN 0 AND 9),  -- 60대씩 10개 배치 (0~9)
+  -- PC 노드 정보 (5대 PC 구조)
+  pc_id VARCHAR(16),                    -- PC 노드 ID (예: PC_01, PC_02, ..., PC_05)
+  pc_device_index INTEGER,              -- PC 내에서의 디바이스 인덱스 (0~119, 각 PC당 최대 120대)
   
   -- 작업 상태
   status VARCHAR(16) DEFAULT 'pending' CHECK (status IN (
@@ -119,7 +120,7 @@ CREATE TABLE IF NOT EXISTS youtube_video_tasks (
   
   -- 제약 조건
   CONSTRAINT unique_video_device UNIQUE (video_id, device_serial),
-  CONSTRAINT valid_batch CHECK (batch_no IS NULL OR (batch_no >= 0 AND batch_no <= 9))
+  CONSTRAINT valid_pc_device_index CHECK (pc_device_index IS NULL OR (pc_device_index >= 0 AND pc_device_index < 150))
 );
 
 -- ============================================================================
@@ -138,7 +139,7 @@ CREATE INDEX IF NOT EXISTS idx_youtube_tasks_video ON youtube_video_tasks(video_
 CREATE INDEX IF NOT EXISTS idx_youtube_tasks_device ON youtube_video_tasks(device_serial);
 CREATE INDEX IF NOT EXISTS idx_youtube_tasks_citizen ON youtube_video_tasks(citizen_id);
 CREATE INDEX IF NOT EXISTS idx_youtube_tasks_status ON youtube_video_tasks(status);
-CREATE INDEX IF NOT EXISTS idx_youtube_tasks_batch ON youtube_video_tasks(batch_no);
+CREATE INDEX IF NOT EXISTS idx_youtube_tasks_pc ON youtube_video_tasks(pc_id);
 CREATE INDEX IF NOT EXISTS idx_youtube_tasks_created ON youtube_video_tasks(created_at);
 
 -- 복합 인덱스 (집계 쿼리용)
@@ -252,6 +253,26 @@ CREATE TRIGGER trigger_youtube_tasks_stats
 -- 6. Views (집계 조회용)
 -- ============================================================================
 
+-- PC 노드별 통계 뷰
+CREATE OR REPLACE VIEW youtube_pc_node_stats AS
+SELECT
+  t.video_id,
+  t.pc_id,
+  COUNT(*) as total_devices,
+  COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed,
+  COUNT(CASE WHEN t.status = 'pending' THEN 1 END) as pending,
+  COUNT(CASE WHEN t.status = 'watching' THEN 1 END) as watching,
+  COUNT(CASE WHEN t.status = 'failed' THEN 1 END) as failed,
+  COUNT(CASE WHEN t.liked = true THEN 1 END) as likes,
+  COUNT(CASE WHEN t.commented = true THEN 1 END) as comments,
+  AVG(CASE WHEN t.watch_duration_seconds IS NOT NULL THEN t.watch_duration_seconds END) as avg_watch_duration,
+  MIN(t.started_at) as first_started,
+  MAX(t.completed_at) as last_completed
+FROM youtube_video_tasks t
+WHERE t.pc_id IS NOT NULL
+GROUP BY t.video_id, t.pc_id
+ORDER BY t.pc_id;
+
 -- 영상별 상세 통계 뷰
 CREATE OR REPLACE VIEW youtube_video_stats AS
 SELECT 
@@ -287,6 +308,13 @@ SELECT
     (COUNT(CASE WHEN t.status = 'completed' THEN 1 END)::DECIMAL / NULLIF(v.target_device_count, 0)) * 100, 
     2
   ) as completion_rate,
+  
+  -- PC 노드별 분포 (5대 PC 구조)
+  COUNT(DISTINCT t.pc_id) as pc_node_count,
+  jsonb_object_agg(
+    COALESCE(t.pc_id, 'unassigned'),
+    COUNT(t.task_id)
+  ) FILTER (WHERE t.pc_id IS NOT NULL) as pc_distribution,
   
   v.created_at,
   v.updated_at,
@@ -352,39 +380,118 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 디바이스 작업 할당 함수
+-- 디바이스 작업 할당 함수 (PC 노드별 동적 배치)
 CREATE OR REPLACE FUNCTION assign_video_to_devices(
   p_video_id UUID,
-  p_device_serials TEXT[],  -- 디바이스 시리얼 배열
-  p_batch_size INTEGER DEFAULT 60
+  p_device_serials TEXT[] DEFAULT NULL,  -- 디바이스 시리얼 배열 (NULL이면 자동 조회)
+  p_target_count INTEGER DEFAULT 600     -- 목표 디바이스 수 (기본 600)
 )
-RETURNS INTEGER AS $$
+RETURNS JSONB AS $$
 DECLARE
-  v_device_serial TEXT;
-  v_batch_no INTEGER;
-  v_index INTEGER := 0;
+  v_device RECORD;
+  v_pc_id VARCHAR(16);
+  v_pc_counts JSONB := '{}'::JSONB;  -- PC별 할당 카운트
   v_assigned_count INTEGER := 0;
+  v_devices_cursor CURSOR FOR 
+    SELECT citizen_id, device_serial, 
+           COALESCE(last_task_id::TEXT, device_serial) as pc_id_calc
+    FROM citizens 
+    WHERE device_serial = ANY(p_device_serials)
+       OR (p_device_serials IS NULL AND citizen_id IS NOT NULL)
+    ORDER BY device_serial ASC
+    LIMIT p_target_count;
 BEGIN
   -- 기존 작업 삭제 (재할당 가능하도록)
   DELETE FROM youtube_video_tasks
   WHERE video_id = p_video_id
     AND status = 'pending';
   
-  -- 각 디바이스에 작업 할당
-  FOREACH v_device_serial IN ARRAY p_device_serials LOOP
-    v_batch_no := v_index / p_batch_size;
-    
-    INSERT INTO youtube_video_tasks (
-      video_id, device_serial, batch_no, status
-    )
-    VALUES (
-      p_video_id, v_device_serial, v_batch_no, 'pending'
-    )
-    ON CONFLICT (video_id, device_serial) DO NOTHING;
-    
-    v_index := v_index + 1;
-    v_assigned_count := v_assigned_count + 1;
-  END LOOP;
+  -- 디바이스가 지정되지 않았으면 자동 조회
+  IF p_device_serials IS NULL THEN
+    -- citizens 테이블에서 활성 디바이스 조회
+    FOR v_device IN 
+      SELECT citizen_id, device_serial
+      FROM citizens 
+      ORDER BY device_serial ASC
+      LIMIT p_target_count
+    LOOP
+      -- PC ID 추출 (device_serial 형식 가정: PC_01_SLOT_001)
+      -- 또는 기본 패턴으로 PC 노드 할당
+      v_pc_id := COALESCE(
+        substring(v_device.device_serial from 'PC_(\d+)'),
+        'PC_' || LPAD((v_assigned_count / 120 + 1)::TEXT, 2, '0')  -- 120대씩 PC 분배
+      );
+      
+      -- PC별 카운트 추적
+      IF NOT (v_pc_counts ? v_pc_id) THEN
+        v_pc_counts := jsonb_set(v_pc_counts, ARRAY[v_pc_id], '0'::JSONB);
+      END IF;
+      
+      -- 해당 PC의 현재 디바이스 인덱스
+      DECLARE
+        v_pc_index INTEGER;
+      BEGIN
+        v_pc_index := (v_pc_counts->>v_pc_id)::INTEGER;
+        
+        INSERT INTO youtube_video_tasks (
+          video_id, device_serial, citizen_id, pc_id, pc_device_index, status
+        )
+        VALUES (
+          p_video_id, v_device.device_serial, v_device.citizen_id, v_pc_id, v_pc_index, 'pending'
+        )
+        ON CONFLICT (video_id, device_serial) DO NOTHING;
+        
+        -- PC 카운트 증가
+        v_pc_counts := jsonb_set(
+          v_pc_counts, 
+          ARRAY[v_pc_id], 
+          ((v_pc_index + 1)::TEXT)::JSONB
+        );
+        v_assigned_count := v_assigned_count + 1;
+      END;
+    END LOOP;
+  ELSE
+    -- 지정된 디바이스 배열로 할당
+    FOR v_device IN 
+      SELECT c.citizen_id, c.device_serial
+      FROM citizens c
+      WHERE c.device_serial = ANY(p_device_serials)
+      ORDER BY c.device_serial ASC
+    LOOP
+      -- PC ID 추출
+      v_pc_id := COALESCE(
+        substring(v_device.device_serial from 'PC_(\d+)'),
+        'PC_' || LPAD((v_assigned_count / 120 + 1)::TEXT, 2, '0')
+      );
+      
+      -- PC별 카운트 추적
+      IF NOT (v_pc_counts ? v_pc_id) THEN
+        v_pc_counts := jsonb_set(v_pc_counts, ARRAY[v_pc_id], '0'::JSONB);
+      END IF;
+      
+      DECLARE
+        v_pc_index INTEGER;
+      BEGIN
+        v_pc_index := (v_pc_counts->>v_pc_id)::INTEGER;
+        
+        INSERT INTO youtube_video_tasks (
+          video_id, device_serial, citizen_id, pc_id, pc_device_index, status
+        )
+        VALUES (
+          p_video_id, v_device.device_serial, v_device.citizen_id, v_pc_id, v_pc_index, 'pending'
+        )
+        ON CONFLICT (video_id, device_serial) DO NOTHING;
+        
+        -- PC 카운트 증가
+        v_pc_counts := jsonb_set(
+          v_pc_counts, 
+          ARRAY[v_pc_id], 
+          ((v_pc_index + 1)::TEXT)::JSONB
+        );
+        v_assigned_count := v_assigned_count + 1;
+      END;
+    END LOOP;
+  END IF;
   
   -- 영상 상태 업데이트
   UPDATE youtube_videos
@@ -393,7 +500,11 @@ BEGIN
     updated_at = NOW()
   WHERE video_id = p_video_id;
   
-  RETURN v_assigned_count;
+  -- 결과 반환 (할당 통계)
+  RETURN jsonb_build_object(
+    'total_assigned', v_assigned_count,
+    'pc_distribution', v_pc_counts
+  );
 END;
 $$ LANGUAGE plpgsql;
 
@@ -482,13 +593,14 @@ COMMENT ON COLUMN youtube_videos.notworked IS '안 본 횟수 = 600 - viewd (Goo
 COMMENT ON COLUMN youtube_videos.like_count IS '좋아요 수 (백엔드 집계, Google Sheets I열)';
 COMMENT ON COLUMN youtube_videos.comment_count IS '댓글 수 (백엔드 집계, Google Sheets J열)';
 
-COMMENT ON TABLE youtube_video_tasks IS '600대 디바이스별 YouTube 영상 작업 및 결과';
-COMMENT ON COLUMN youtube_video_tasks.batch_no IS '배치 번호 (60대씩 10개 배치, 0~9)';
+COMMENT ON TABLE youtube_video_tasks IS '600대 디바이스별 YouTube 영상 작업 및 결과 (5대 PC 노드 구조)';
+COMMENT ON COLUMN youtube_video_tasks.pc_id IS 'PC 노드 ID (PC_01 ~ PC_05, 각 노드당 최대 120대)';
+COMMENT ON COLUMN youtube_video_tasks.pc_device_index IS 'PC 내에서의 디바이스 인덱스 (0~119)';
 COMMENT ON COLUMN youtube_video_tasks.liked IS '좋아요 클릭 여부';
 COMMENT ON COLUMN youtube_video_tasks.commented IS '댓글 작성 여부';
 
 COMMENT ON FUNCTION sync_youtube_video_from_sheet IS 'Google Sheets → Supabase 동기화';
-COMMENT ON FUNCTION assign_video_to_devices IS '영상을 디바이스에 할당 (최대 600대)';
+COMMENT ON FUNCTION assign_video_to_devices IS '영상을 디바이스에 할당 (5대 PC 노드에 동적 분배)';
 COMMENT ON FUNCTION complete_youtube_task IS '작업 완료 처리 및 집계 업데이트';
 COMMENT ON FUNCTION get_youtube_videos_for_sheet IS 'Supabase → Google Sheets 동기화용 조회';
 

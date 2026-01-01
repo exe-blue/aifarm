@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Video Assignment Orchestrator
+Video Assignment Orchestrator (PC 노드 구조)
 
 역할:
 - Supabase videos / devices 테이블을 읽어서,
 - 특정 video_id (또는 status=pending 인 가장 최근 영상)에 대해
   최대 N대(기본 600대) 디바이스에 video_assignments를 생성한다.
-- 60대 단위로 batch_no(0~9)를 부여한다.
+- PC 노드별로 동적 분배 (5대 PC × 각 120대 = 600대)
 
 전제:
 - Supabase에 아래 테이블이 존재한다고 가정
@@ -149,7 +149,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Supabase video_assignments Orchestrator")
     parser.add_argument("--video-id", help="대상 video UUID (생략 시 pending 중 가장 오래된 것)")
     parser.add_argument("--target-count", type=int, default=600, help="할당할 디바이스 수 (기본 600)")
-    parser.add_argument("--batch-size", type=int, default=60, help="배치 크기 (기본 60, 즉 10배치)")
+    parser.add_argument("--batch-size", type=int, default=120, help="배치 크기 (기본 120, PC 노드당 디바이스 수)")
 
     args = parser.parse_args()
 

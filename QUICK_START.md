@@ -183,13 +183,34 @@ https://docs.google.com/spreadsheets/d/1m2WQTMMe48hxS6ARWD_P0KoWA7umwtGcW2Vno_Ql
 
 ---
 
+## 🏗️ 시스템 구조
+
+```
+Gateway (Port 3100)
+    ↓
+5대 PC 노드
+├── PC_01 (120대 안드로이드)
+├── PC_02 (120대 안드로이드)
+├── PC_03 (120대 안드로이드)
+├── PC_04 (120대 안드로이드)
+└── PC_05 (120대 안드로이드)
+
+총 디바이스: 120 × 5 = 600대
+```
+
+**특징**:
+- ✅ PC 노드별 동적 배치
+- ✅ 유동적 스케일링 (PC 추가/제거)
+- ✅ PC별 진행 상황 모니터링
+- ✅ 장애 격리 (PC 단위)
+
 ## 📂 주요 파일
 
 ### 데이터베이스
 
 ```
 supabase/migrations/
-├── ALL_MIGRATIONS.sql           ⭐ 전체 마이그레이션 (1,019줄)
+├── ALL_MIGRATIONS.sql           ⭐ 전체 마이그레이션 (1,131줄)
 ├── 001_citizens.sql              (AI 시민)
 ├── 002_view_events.sql           (시청 이벤트)
 ├── 003_credit_transactions.sql   (크레딧 거래)

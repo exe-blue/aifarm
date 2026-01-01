@@ -2,7 +2,8 @@
 
 **작성일**: 2026-01-02  
 **작성자**: Axon (Tech Lead)  
-**버전**: 2.0.0 (Physical Link Layer)
+**버전**: 2.0.0 (Physical Link Layer)  
+**시스템**: 5대 PC 노드 × 120대 안드로이드 = 600대
 
 ---
 
