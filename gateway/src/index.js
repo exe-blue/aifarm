@@ -53,6 +53,9 @@ const discoveryRouter = require('./api/routes/discovery');
 // OpenAI Integration
 const aiRouter = require('./api/routes/ai');
 
+// YouTube Videos API
+const youtubeVideosRouter = require('./api/routes/youtube-videos');
+
 // Stream Server (Legacy, Iframe용)
 const StreamServer = require('./stream/server');
 
@@ -159,6 +162,9 @@ app.use('/stream', streamRouter);
 
 // OpenAI Integration
 app.use('/api/ai', aiRouter);
+
+// YouTube Videos API
+app.use('/api/youtube', youtubeVideosRouter);
 
 // React SPA 라우팅 (클라이언트 사이드 라우팅 지원)
 const fs = require('fs');

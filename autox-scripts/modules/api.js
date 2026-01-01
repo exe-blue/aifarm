@@ -128,6 +128,86 @@ class API {
             return false;
         }
     }
+
+    /**
+     * 오늘의 영상 목록 가져오기
+     * GET /api/youtube/videos/today?date=YYYY-MM-DD
+     */
+    getTodayVideos(dateStr) {
+        try {
+            this.logger.info('오늘의 영상 조회 중...', { date: dateStr });
+
+            const url = `${this.baseUrl}/api/youtube/videos/today?date=${dateStr}`;
+            const response = http.get(url, {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                timeout: this.timeout
+            });
+
+            if (response.statusCode === 200) {
+                const data = response.body.json();
+                
+                if (data.success && data.videos) {
+                    this.logger.info('영상 목록 조회 성공', {
+                        count: data.videos.length
+                    });
+                    return data.videos;
+                } else {
+                    this.logger.warn('오늘 등록된 영상 없음');
+                    return [];
+                }
+            } else {
+                this.logger.error('영상 조회 실패', {
+                    status: response.statusCode
+                });
+                return [];
+            }
+        } catch (e) {
+            this.logger.error('영상 조회 예외', {
+                error: e.message
+            });
+            return [];
+        }
+    }
+
+    /**
+     * 작업 결과 보고 (Youtube Farm 결과)
+     * POST /api/youtube/farm/report
+     */
+    reportFarmSession(deviceId, sessionResult) {
+        try {
+            this.logger.info('Youtube Farm 세션 보고 중...');
+
+            const url = `${this.baseUrl}/api/youtube/farm/report`;
+            const payload = {
+                device_id: deviceId,
+                ...sessionResult
+            };
+
+            const response = http.post(url, JSON.stringify(payload), {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                timeout: this.timeout
+            });
+
+            if (response.statusCode === 200) {
+                this.logger.info('세션 보고 성공');
+                return true;
+            } else {
+                this.logger.error('세션 보고 실패', {
+                    status: response.statusCode
+                });
+                return false;
+            }
+        } catch (e) {
+            this.logger.error('세션 보고 예외', {
+                error: e.message
+            });
+            return false;
+        }
+    }
 }
 
 module.exports = API;

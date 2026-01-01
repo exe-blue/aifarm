@@ -29,5 +29,30 @@
     "click_delay_max": 1500,
     "typing_speed_min": 100,
     "typing_speed_max": 300
+  },
+  "youtube_farm": {
+    "min_play_time": 50,
+    "max_play_time": 80,
+    "like_probability": 0.1,
+    "subscribe_probability": 0.1,
+    "comment_enabled": true,
+    "video_interval_min": 5,
+    "video_interval_max": 10
+  },
+  "sleep_pattern": {
+    "ratio": 0.5,
+    "min_sleep_minutes": 3,
+    "max_sleep_minutes": 30,
+    "random_variance": 0.2
+  },
+  "schedule": {
+    "enabled": true,
+    "startHour": 9,
+    "startMinute": 0,
+    "endHour": 23,
+    "endMinute": 59,
+    "intervalMinutes": 10,
+    "maxCount": 0,
+    "youtube_farm_probability": 0.3
   }
 }
