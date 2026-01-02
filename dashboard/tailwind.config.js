@@ -14,6 +14,15 @@ module.exports = {
         abyss: '#0A0A0A',
         surface: '#121212',
         
+        // DoAi Yellow (브랜드 컬러 - 로고에서 추출)
+        doai: {
+          DEFAULT: '#E6D800',
+          bright: '#FFF100',
+          dim: 'rgba(230,216,0,0.6)',
+          glow: 'rgba(230,216,0,0.3)',
+          ghost: 'rgba(230,216,0,0.1)',
+        },
+        
         // Ethereal (빛)
         ethereal: {
           DEFAULT: '#FAFAFA',
@@ -54,6 +63,7 @@ module.exports = {
       },
       boxShadow: {
         'glow-white': '0 0 20px rgba(250,250,250,0.15)',
+        'glow-yellow': '0 0 20px rgba(230,216,0,0.4)',
         'glow-red': '0 0 20px rgba(255,68,68,0.3)',
         'glow-green': '0 0 20px rgba(0,255,136,0.3)',
         'glow-violet': '0 0 20px rgba(139,92,246,0.3)',

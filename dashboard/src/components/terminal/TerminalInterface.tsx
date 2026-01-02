@@ -47,8 +47,11 @@ export const TerminalInterface = () => {
         >
           {/* Header */}
           <div className="mb-6">
-            <div className="font-mono text-sm text-resonance mb-4">
-              &gt; CALL_EXISTENCE.exe
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-full bg-doai shadow-glow-yellow" />
+              <div className="font-mono text-sm text-doai">
+                &gt; CALL_EXISTENCE.exe
+              </div>
             </div>
             <div className="font-mono text-base text-ethereal-dim space-y-1">
               <p>They do not sleep.</p>

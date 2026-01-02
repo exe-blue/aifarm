@@ -31,8 +31,8 @@ export const TerminalInput = ({ onSubmit, onFocus }: TerminalInputProps) => {
 
   return (
     <div className="relative">
-      <div className="flex items-center gap-2 border-b border-ethereal-ghost pb-2">
-        <span className="font-mono text-ethereal-muted text-base">▋</span>
+      <div className="flex items-center gap-2 border-b border-doai/30 pb-2 focus-within:border-doai transition-colors">
+        <span className="font-mono text-doai text-base">▋</span>
         <input
           type="text"
           value={input}
