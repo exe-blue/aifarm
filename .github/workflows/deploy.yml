@@ -69,41 +69,25 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             
-            # Docker Compose 재시작
-            echo "🐳 Docker 서비스 재시작..."
-            cd Server_Vultr
-            docker-compose pull
-            docker-compose up -d --build --remove-orphans
+            # Orchestrator 재시작 (Docker는 수동 설정 필요)
+            echo "🧠 Orchestrator 재시작..."
+            if systemctl is-active --quiet doai-orchestrator; then
+              systemctl restart doai-orchestrator
+              echo "✅ Orchestrator 재시작 완료"
+            else
+              echo "⚠️  Orchestrator 서비스 없음 (수동 설정 필요)"
+            fi
             
             # 헬스체크
             echo "🔍 헬스체크..."
-            sleep 10
+            sleep 3
             
-            # n8n 체크
-            if curl -sf http://localhost:5678/healthz > /dev/null 2>&1; then
-              echo "✅ n8n: 정상"
+            # Orchestrator 체크
+            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+              echo "✅ Orchestrator: 정상"
             else
-              echo "⚠️ n8n: 시작 중..."
+              echo "⚠️ Orchestrator: 확인 필요"
             fi
-            
-            # Persona Service 체크
-            if curl -sf http://localhost:8006/health > /dev/null 2>&1; then
-              echo "✅ persona-service: 정상"
-            else
-              echo "⚠️ persona-service: 시작 중..."
-            fi
-            
-            # Human Pattern Service 체크
-            if curl -sf http://localhost:8004/health > /dev/null 2>&1; then
-              echo "✅ human-pattern-service: 정상"
-            else
-              echo "⚠️ human-pattern-service: 시작 중..."
-            fi
-            
-            # 서비스 상태 출력
-            echo ""
-            echo "📊 서비스 상태:"
-            docker-compose ps
             
             echo ""
             echo "=========================================="
