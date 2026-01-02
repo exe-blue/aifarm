@@ -20,7 +20,7 @@ set -e  # 에러 시 중단
 echo "╔════════════════════════════════════════════════════════╗"
 echo "║  DoAi.Me Vultr 서버 초기 설정                         ║"
 echo "║  IP: 158.247.210.152                                  ║"
-echo "║  Hostname: vultr-brain                                ║"
+echo "║  Hostname: doai-orchestrator-1                        ║"
 echo "╚════════════════════════════════════════════════════════╝"
 
 # =============================================================================
@@ -72,11 +72,11 @@ fi
 # =============================================================================
 
 echo "🏷️  호스트명 설정..."
-hostnamectl set-hostname vultr-brain
+hostnamectl set-hostname doai-orchestrator-1
 
 # /etc/hosts 업데이트
-if ! grep -q "vultr-brain" /etc/hosts; then
-    echo "127.0.0.1 vultr-brain" >> /etc/hosts
+if ! grep -q "doai-orchestrator-1" /etc/hosts; then
+    echo "127.0.0.1 doai-orchestrator-1" >> /etc/hosts
 fi
 
 # =============================================================================
@@ -87,19 +87,18 @@ echo "📁 디렉토리 구조 생성..."
 mkdir -p /opt/doai
 mkdir -p /opt/doai/logs
 mkdir -p /opt/doai/data
-mkdir -p /opt/aifarm
 
 # =============================================================================
 # 6. Git 저장소 클론
 # =============================================================================
 
 echo "📥 Git 저장소 클론..."
-if [ ! -d "/opt/aifarm/.git" ]; then
+if [ ! -d "/opt/doai-me/.git" ]; then
     cd /opt
-    git clone https://github.com/exe-blue/doai-me.git aifarm
+    git clone https://github.com/exe-blue/doai-me.git doai-me
 else
     echo "  → 이미 클론됨, 업데이트..."
-    cd /opt/aifarm
+    cd /opt/doai-me
     git fetch origin main
     git reset --hard origin/main
 fi
@@ -109,7 +108,7 @@ fi
 # =============================================================================
 
 echo "🧠 Orchestrator 설정..."
-cd /opt/aifarm/orchestrator
+cd /opt/doai-me/orchestrator
 
 # 가상환경 생성
 python3 -m venv venv
@@ -154,10 +153,10 @@ User=root
 WorkingDirectory=/opt/aifarm/orchestrator
 
 # 환경 변수
-EnvironmentFile=/opt/aifarm/orchestrator/.env
+EnvironmentFile=/opt/doai-me/orchestrator/.env
 
 # 실행
-ExecStart=/opt/aifarm/orchestrator/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8443 --ssl-keyfile /etc/letsencrypt/live/doai.me/privkey.pem --ssl-certfile /etc/letsencrypt/live/doai.me/fullchain.pem
+ExecStart=/opt/doai-me/orchestrator/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8443 --ssl-keyfile /etc/letsencrypt/live/doai.me/privkey.pem --ssl-certfile /etc/letsencrypt/live/doai.me/fullchain.pem
 
 # 재시작 정책
 Restart=always
@@ -202,7 +201,7 @@ curl -fsSL https://tailscale.com/install.sh | sh || {
 # =============================================================================
 
 echo "🐳 Docker Compose 서비스 시작..."
-cd /opt/aifarm/Server_Vultr
+cd /opt/doai-me/Server_Vultr
 
 # .env 파일 생성 (있다면)
 if [ -f "env.example" ]; then

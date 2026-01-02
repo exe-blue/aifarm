@@ -62,7 +62,7 @@ jobs:
             echo "=========================================="
             
             # 프로젝트 디렉토리로 이동
-            cd /opt/aifarm || { echo "❌ /opt/aifarm 디렉토리 없음"; exit 1; }
+            cd /opt/doai-me || { echo "❌ /opt/doai-me 디렉토리 없음"; exit 1; }
             
             # Git pull
             echo "📥 최신 코드 가져오기..."
