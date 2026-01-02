@@ -27,6 +27,13 @@ import uvicorn
 from state import StateManager
 from policy import PolicyEngine
 
+# Bug Fix 1: Supabase client (TODO: 실제 구현 필요)
+try:
+    from supabase import create_client
+    supabase_client = None  # TODO: create_client(SUPABASE_URL, SUPABASE_KEY)
+except ImportError:
+    supabase_client = None
+
 # ==================== 로깅 ====================
 logging.basicConfig(
     level=logging.INFO,
@@ -34,6 +41,18 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
+
+# ==================== Dependencies (Bug Fix 1) ====================
+
+def get_supabase_client():
+    """Supabase 클라이언트 주입"""
+    if supabase_client is None:
+        logger.warn("Supabase client not initialized")
+    return supabase_client
+
+def get_logger():
+    """Logger 주입"""
+    return logger
 
 # ==================== 초기화 ====================
 app = FastAPI(title="DoAi.Me Orchestrator", version="1.0.0-P0")
@@ -283,6 +302,28 @@ async def create_job(job_data: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ==================== 라우터 등록 (Bug Fix 1 & 3) ====================
+
+# ops 라우터 등록
+try:
+    from ops import router as ops_router, execute_recovery
+    from auto_recovery import AutoRecoveryEngine
+    
+    app.include_router(ops_router)
+    
+    # Bug Fix 3: execute_recovery 주입 (순환 import 방지)
+    auto_recovery_engine = AutoRecoveryEngine(
+        state=state,
+        supabase=supabase_client,
+        logger=logger,
+        execute_recovery_func=execute_recovery
+    )
+    
+except ImportError as e:
+    logger.warn(f"ops/auto_recovery 모듈 로드 실패: {e}")
+    auto_recovery_engine = None
+
+
 # ==================== 백그라운드 태스크 ====================
 
 @app.on_event("startup")
@@ -290,11 +331,15 @@ async def startup_event():
     """서버 시작 시 백그라운드 작업 시작"""
     logger.info("╔════════════════════════════════════════════════════════╗")
     logger.info("║  Vultr Orchestrator (The Brain)                      ║")
-    logger.info("║  P0: Reverse WSS Mesh                                 ║")
+    logger.info("║  P0: Reverse WSS Mesh + Emergency Recovery            ║")
     logger.info("╚════════════════════════════════════════════════════════╝")
     
-    # 정책 엔진 시작 (하트비트 감시, 자동복구)
+    # 정책 엔진 시작 (하트비트 감시)
     asyncio.create_task(policy.monitor_loop())
+    
+    # 자동 복구 엔진 시작 (Bug Fix 3)
+    if auto_recovery_engine:
+        asyncio.create_task(auto_recovery_engine.monitor_loop())
 
 
 # ==================== 메인 ====================
