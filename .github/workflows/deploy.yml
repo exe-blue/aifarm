@@ -25,9 +25,8 @@ on:
         type: boolean
 
 env:
-  VULTR_HOST: ${{ secrets.VULTR_HOST }}
-  VULTR_USER: ${{ secrets.VULTR_USER }}
-  VULTR_SSH_KEY: ${{ secrets.VULTR_SSH_KEY }}
+  VULTR_HOST: 158.247.210.152
+  VULTR_USER: root
 
 jobs:
   # ==================== Vultr Deployment ====================
@@ -48,15 +47,14 @@ jobs:
       - name: Add Vultr to known hosts
         run: |
           mkdir -p ~/.ssh
-          # ssh-keyscan with timeout and fallback
-          ssh-keyscan -H -t rsa,ed25519 ${{ secrets.VULTR_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || \
-          ssh-keyscan -H doai.me >> ~/.ssh/known_hosts 2>/dev/null || \
+          # IP 주소로 known_hosts 추가
+          ssh-keyscan -H -t rsa,ed25519 158.247.210.152 >> ~/.ssh/known_hosts 2>/dev/null || \
           echo "⚠️  Known hosts 추가 실패, SSH는 StrictHostKeyChecking=no로 진행"
 
       - name: Deploy to Vultr
         run: |
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            ${{ secrets.VULTR_USER }}@${{ secrets.VULTR_HOST }} << 'ENDSSH'
+            root@158.247.210.152 << 'ENDSSH'
             set -e
             
             echo "=========================================="
