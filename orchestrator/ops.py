@@ -87,7 +87,7 @@ async def request_recovery(
     if request.node_id not in TAILSCALE_NODES:
         raise HTTPException(400, f"Unknown node_id: {request.node_id}")
     
-    logger.info(f"🚨 긴급 복구 요청: {request.node_id} ({request.level})")
+    logger.info("🚨 긴급 복구 요청: node_id=%s level=%s reason=%s", request.node_id, request.level, request.reason)
     
     try:
         # Supabase RPC 호출
@@ -267,38 +267,58 @@ async def execute_recovery(event_id: str, node_id: str, level: str, supabase, lo
         
         start_time = time.time()
         
-        # 실행 (타임아웃 10분)
-        result = subprocess.run(
-            ssh_command,
-            capture_output=True,
-            text=True,
-            timeout=600,
-            encoding='utf-8',
-            errors='replace'
-        )
+        # Bug Fix 3: 비동기 subprocess 실행 (이벤트 루프 블로킹 방지)
+        try:
+            # asyncio.create_subprocess_exec으로 비동기 실행
+            process = await asyncio.create_subprocess_exec(
+                *ssh_command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            # 타임아웃 10분
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                process.communicate(),
+                timeout=600
+            )
+            
+            # 디코딩
+            stdout_text = stdout_bytes.decode('utf-8', errors='replace') if stdout_bytes else ""
+            stderr_text = stderr_bytes.decode('utf-8', errors='replace') if stderr_bytes else ""
+            
+            returncode = process.returncode
+            
+        except asyncio.TimeoutError:
+            # 타임아웃 시 프로세스 종료
+            try:
+                process.kill()
+                await process.wait()
+            except:
+                pass
+            raise subprocess.TimeoutExpired(ssh_command, 600)
         
         duration_ms = int((time.time() - start_time) * 1000)
         
         # stdout/stderr 프리뷰 (최대 1000자)
-        stdout_preview = result.stdout[:1000] if result.stdout else ""
-        stderr_preview = result.stderr[:1000] if result.stderr else ""
+        stdout_preview = stdout_text[:1000] if stdout_text else ""
+        stderr_preview = stderr_text[:1000] if stderr_text else ""
         
         # 4. 결과 기록 (Bug Fix 2)
         supabase.table('ops_events').update({
-            'status': 'success' if result.returncode == 0 else 'failed',
+            'status': 'success' if returncode == 0 else 'failed',
             'completed_at': datetime.utcnow().isoformat(),
             'duration_ms': duration_ms,
-            'exit_code': result.returncode,
+            'exit_code': returncode,
             'stdout_preview': stdout_preview,
             'stderr_preview': stderr_preview,
-            'error_message': stderr_preview if result.returncode != 0 else None,
+            'error_message': stderr_preview if returncode != 0 else None,
             'updated_at': datetime.utcnow().isoformat()
         }).eq('event_id', event_id).execute()
         
-        if result.returncode == 0:
+        if returncode == 0:
             logger.info(f"✅ 복구 성공: {node_id} ({duration_ms}ms)")
         else:
-            logger.error(f"❌ 복구 실패: {node_id} (exit: {result.returncode})")
+            logger.error(f"❌ 복구 실패: {node_id} (exit: {returncode})")
     
     except subprocess.TimeoutExpired:
         logger.error(f"⏱️ 복구 타임아웃: {node_id}")

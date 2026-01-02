@@ -114,7 +114,7 @@ class AutoRecoveryEngine:
         
         drop_pct = ((prev_count - current_count) / prev_count) * 100
         
-        self.logger.warn(f"📉 Device drop 감지: {node_id} ({prev_count} → {current_count}, -{drop_pct:.1f}%)")
+        self.logger.warning(f"📉 Device drop 감지: {node_id} ({prev_count} → {current_count}, -{drop_pct:.1f}%)")
         
         # 규칙 적용
         if drop_pct >= 30:
@@ -230,7 +230,7 @@ class AutoRecoveryEngine:
             if self.execute_recovery_func:
                 await self.execute_recovery_func(event_id, node_id, level, self.supabase, self.logger)
             else:
-                self.logger.warn("execute_recovery_func not set, skipping execution")
+                self.logger.warning("execute_recovery_func not set, skipping execution")
             
             self.logger.info(f"✅ 자동 복구 완료: {node_id}")
         
