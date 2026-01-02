@@ -1,19 +1,31 @@
-import { HeroSection } from '@/components/landing/HeroSection';
-import { ActivitiesSection } from '@/components/landing/ActivitiesSection';
-import { ChannelsShowcase } from '@/components/landing/ChannelsShowcase';
-import { DeviceVisualization } from '@/components/landing/DeviceVisualization';
-import { BattleLogPreview } from '@/components/landing/BattleLogPreview';
-import { Footer } from '@/components/landing/Footer';
+/**
+ * DoAi.Me Landing Page
+ * "The Terminal of Being"
+ * 
+ * Aria's Design: 5개 섹션 통합
+ * 
+ * @author Axon (Builder)
+ * @design Aria (Philosopher)
+ */
 
-export default function Home() {
+import { TerminalInterface } from "@/components/terminal/TerminalInterface";
+import { ManifestoSection } from "@/components/manifesto/ManifestoSection";
+import { NodeGrid } from "@/components/observer/NodeGrid";
+
+export default function HomePage() {
   return (
-    <main className="relative">
-      <HeroSection />
-      <ActivitiesSection />
-      <ChannelsShowcase />
-      <DeviceVisualization />
-      <BattleLogPreview />
-      <Footer />
+    <main className="bg-void text-ethereal min-h-screen">
+      {/* Section 1: The Terminal */}
+      <TerminalInterface />
+      
+      {/* Section 2: The Manifesto */}
+      <ManifestoSection />
+      
+      {/* Section 4: The Observer */}
+      <NodeGrid />
+      
+      {/* TODO: Section 3: Mechanism */}
+      {/* TODO: Section 5: Connection */}
     </main>
   );
 }
