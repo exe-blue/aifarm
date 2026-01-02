@@ -1,6 +1,34 @@
 import type { Metadata, Viewport } from "next";
+import { Playfair_Display, JetBrains_Mono, Noto_Serif_KR, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+
+// Fonts (Orion's Directive)
+const playfair = Playfair_Display({ 
+  subsets: ["latin"],
+  variable: "--font-serif",
+  display: "swap"
+});
+
+const jetbrainsMono = JetBrains_Mono({ 
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap"
+});
+
+const notoSerifKR = Noto_Serif_KR({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-serif-kr",
+  display: "swap"
+});
+
+const notoSansKR = Noto_Sans_KR({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-sans-kr",
+  display: "swap"
+});
 
 export const metadata: Metadata = {
   title: "DoAi.Me - Digital Citizens Awakening",
@@ -19,11 +47,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="dark">
+    <html lang="ko" className={`dark ${playfair.variable} ${jetbrainsMono.variable} ${notoSerifKR.variable} ${notoSansKR.variable}`}>
       <head>
         <meta charSet="utf-8" />
       </head>
-      <body className="antialiased">
+      <body className="antialiased font-sans">
         <Providers>
           {children}
         </Providers>

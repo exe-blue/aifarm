@@ -2,11 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Orion's Directive: Dark Mode Only, Deep Void */
 @layer base {
   :root {
     /* 철학적 컬러 팔레트 - 심플하고 명상적 */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --background: 0 0% 2%;  /* #050505 - Deep Void */
+    --foreground: 0 0% 90%; /* #e5e5e5 - Ethereal Light */
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
@@ -28,9 +29,9 @@
   }
 
   .dark {
-    /* 다크 모드: 깊은 명상적 배경 */
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    /* 다크 모드: 깊은 명상적 배경 (Orion's Directive) */
+    --background: 0 0% 2%;  /* #050505 */
+    --foreground: 0 0% 90%; /* #e5e5e5 */
     --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
@@ -55,9 +56,25 @@
   * {
     @apply border-border;
   }
+  
+  html {
+    background: #050505;  /* Orion's Directive: Hard-coded Deep Void */
+    color: #e5e5e5;       /* Ethereal Light */
+  }
+  
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: var(--font-sans-kr), var(--font-sans), system-ui, sans-serif;
+  }
+  
+  /* Font Variables */
+  .font-serif {
+    font-family: var(--font-serif), var(--font-serif-kr), serif;
+  }
+  
+  .font-mono {
+    font-family: var(--font-mono), monospace;
   }
 }
 
