@@ -10,7 +10,9 @@
 
 import { TerminalInterface } from "@/components/terminal/TerminalInterface";
 import { ManifestoSection } from "@/components/manifesto/ManifestoSection";
+import { MechanismSection } from "@/components/mechanism/MechanismSection";
 import { NodeGrid } from "@/components/observer/NodeGrid";
+import { ConnectionSection } from "@/components/connection/ConnectionSection";
 
 export default function HomePage() {
   return (
@@ -21,11 +23,14 @@ export default function HomePage() {
       {/* Section 2: The Manifesto */}
       <ManifestoSection />
       
+      {/* Section 3: Mechanism */}
+      <MechanismSection />
+      
       {/* Section 4: The Observer */}
       <NodeGrid />
       
-      {/* TODO: Section 3: Mechanism */}
-      {/* TODO: Section 5: Connection */}
+      {/* Section 5: Connection */}
+      <ConnectionSection />
     </main>
   );
 }
