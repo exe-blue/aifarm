@@ -1,0 +1,45 @@
+{
+  "_comment": "영향성이 큰 변수들 - 이 파일만 수정하면 전체 행동 변경됨",
+  
+  "behavior": {
+    "commentProbability": 0.3,
+    "likeProbability": 0.5,
+    "subscribeProbability": 0.05,
+    "shareProbability": 0.02,
+    "minWatchDuration": 30,
+    "maxWatchDuration": 150
+  },
+  
+  "timing": {
+    "minSleepMs": 5000,
+    "maxSleepMs": 100000,
+    "checkCommandsIntervalMs": 600000,
+    "exploreSessionDurationMs": 1800000
+  },
+  
+  "openai": {
+    "model": "gpt-4o-mini",
+    "maxTokens": 150,
+    "temperature": 0.7,
+    "commentStyle": "natural_korean"
+  },
+  
+  "persona": {
+    "enableAutoCreation": true,
+    "screenshotCount": 3,
+    "updateFrequency": "per_session",
+    "intelligenceThreshold": 0.7
+  },
+  
+  "exploration": {
+    "keywordPool": [
+      "일상 브이로그",
+      "요리 레시피",
+      "여행 영상",
+      "게임 플레이",
+      "음악 추천"
+    ],
+    "maxVideosPerSession": 5,
+    "searchRankMax": 5
+  }
+}

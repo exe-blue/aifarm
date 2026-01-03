@@ -23,6 +23,7 @@ const Logger = require('../modules/logger.js');
 const API = require('../modules/api.js');
 const YouTubeAutomation = require('../modules/youtube.js');
 const HumanPattern = require('../modules/human.js');
+const CommandFetcher = require('./modules/command-fetcher.js');
 const PersonaChecker = require('./modules/persona-checker.js');
 const PersonaManager = require('./modules/persona-manager.js');
 const ContentExplorer = require('./modules/content-explorer.js');
@@ -35,7 +36,17 @@ const ENV = 'dev';
 let config;
 
 try {
+    // 기본 설정
     config = JSON.parse(files.read(`./config/persona.json`));
+    
+    // 변수 파일 로드 (덮어쓰기)
+    const variables = JSON.parse(files.read(`./config/variables.json`));
+    config.behavior = variables.behavior;
+    config.timing = variables.timing;
+    config.openai = { ...config.openai, ...variables.openai };
+    config.persona = { ...config.persona, ...variables.persona };
+    config.exploration = variables.exploration;
+    
 } catch (e) {
     console.error('설정 파일 로드 실패:', e.message);
     config = {
@@ -60,7 +71,9 @@ try {
 // ==================== 모듈 초기화 ====================
 const logger = new Logger(config);
 const api = new API(config, logger);
-const youtube = new YouTubeAutomation(config, logger, new HumanPattern(config, logger));
+const human = new HumanPattern(config, logger);
+const youtube = new YouTubeAutomation(config, logger, human);
+const commandFetcher = new CommandFetcher(config, logger, api);
 const personaChecker = new PersonaChecker(config, logger, youtube);
 const personaManager = new PersonaManager(config, logger, api);
 const contentExplorer = new ContentExplorer(config, logger, youtube);
@@ -94,20 +107,21 @@ async function mainLoop() {
         aidentityVersion: currentPersona.aidentity_version
     });
     
-    // 메인 루프 시작
+    // 주기적 지시 체크 시작 (60초마다)
+    commandFetcher.startPeriodicCheck(async (commands) => {
+        for (const command of commands) {
+            await executeCommand(command);
+            commandFetcher.markExecuted(command.video_id);
+        }
+    });
+    
+    // 메인 루프 시작 (평시 행동)
     while (isRunning) {
         try {
-            // 2. 지시 확인 (우선순위 높음)
-            const pendingCommand = await checkPendingCommands();
+            // 자율 탐색
+            await autonomousExploration();
             
-            if (pendingCommand) {
-                await executeCommand(pendingCommand);
-            } else {
-                // 3. 평시 행동 (자율 탐색)
-                await autonomousExploration();
-            }
-            
-            // 4. 슬립
+            // 슬립
             await randomSleep();
             
         } catch (e) {
@@ -157,33 +171,17 @@ async function initializePersona() {
     return persona;
 }
 
-/**
- * 대기 중인 지시 확인
- */
-async function checkPendingCommands() {
-    try {
-        const commands = await api.getPendingJobs(config.device.id);
-        
-        if (commands && commands.length > 0) {
-            logger.info('📋 대기 중인 지시', { count: commands.length });
-            return commands[0];  // 첫 번째 작업
-        }
-        
-        return null;
-    } catch (e) {
-        logger.error('❌ 지시 확인 실패', { error: e.message });
-        return null;
-    }
-}
+// checkPendingCommands 함수는 CommandFetcher로 대체됨
 
 /**
  * 지시 실행
  */
-async function executeCommand(command) {
+async function executeCommand(video) {
     logger.info('🎬 지시 실행', { 
-        jobId: command.job_id,
-        type: command.job_type,
-        url: command.payload.url
+        videoId: video.video_id,
+        title: video.subject,
+        url: video.url,
+        scheduledTime: `${video.time}시`
     });
     
     const startTime = Date.now();
@@ -195,59 +193,76 @@ async function executeCommand(command) {
         }
         
         // 2. URL 열기
-        if (!youtube.openByUrl(command.payload.url)) {
+        if (!youtube.openByUrl(video.url)) {
             throw new Error('URL 열기 실패');
         }
         
         sleep(3000);
         
-        // 3. 영상 시청
-        const watchDuration = command.payload.duration_sec || 60;
+        // 3. 영상 정보 추출
+        const videoInfo = {
+            title: video.subject,
+            url: video.url,
+            keyword: video.keyword
+        };
+        
+        // 4. 영상 시청 (변수 파일에서 가져오기)
+        const variables = JSON.parse(files.read('./config/variables.json'));
+        const watchDuration = Math.floor(
+            Math.random() * (variables.behavior.maxWatchDuration - variables.behavior.minWatchDuration)
+        ) + variables.behavior.minWatchDuration;
+        
         logger.info('👀 영상 시청', { duration: watchDuration });
         sleep(watchDuration * 1000);
         
-        // 4. OpenAI 기반 인터랙션
+        // 5. OpenAI 기반 인터랙션 (변수 파일 활용)
         if (config.persona.enableOpenAI) {
-            const videoInfo = await youtube.extractVideoInfo();
+            const variables = JSON.parse(files.read('./config/variables.json'));
             
             await interaction.performInteraction({
                 videoInfo,
                 persona: currentPersona,
-                likeProbability: config.persona.likeProbability,
-                commentProbability: config.persona.commentProbability
+                likeProbability: variables.behavior.likeProbability,
+                commentProbability: variables.behavior.commentProbability
             });
         }
         
-        // 5. 결과 보고
+        // 6. 결과 보고 (Supabase)
         const duration = Math.floor((Date.now() - startTime) / 1000);
         
-        await api.completeJob(command.job_id, {
-            success: true,
-            duration_sec: duration,
+        await api.completeVideoTask({
+            video_id: video.video_id,
+            device_serial: config.device.id,
+            watch_duration: duration,
             liked: interaction.lastLiked,
             commented: interaction.lastCommented,
             comment_text: interaction.lastCommentText
         });
         
-        logger.info('✅ 지시 완료', { jobId: command.job_id, duration });
+        logger.info('✅ 지시 완료', { videoId: video.video_id, duration });
         
-        // 6. Trace 기록
+        // 7. Trace 기록
         await api.recordTrace({
             device_serial: config.device.id,
             action_type: 'YOUTUBE_WATCH',
             outcome_success: true,
             outcome_summary: {
-                video_url: command.payload.url,
+                video_id: video.video_id,
+                video_title: video.subject,
+                video_url: video.url,
                 duration_sec: duration,
-                ai_generated: config.persona.enableOpenAI
+                ai_generated: config.persona.enableOpenAI,
+                scheduled_time: video.time
             }
         });
         
     } catch (e) {
         logger.error('❌ 지시 실행 실패', { error: e.message });
         
-        await api.completeJob(command.job_id, {
-            success: false,
+        await api.completeVideoTask({
+            video_id: video.video_id,
+            device_serial: config.device.id,
+            watch_duration: 0,
             error_message: e.message
         });
     }
