@@ -1,0 +1,51 @@
+{
+  "device": {
+    "id": "AUTO_DETECT"
+  },
+  "server": {
+    "host": "158.247.210.152",
+    "port": 8080,
+    "protocol": "http"
+  },
+  "openai": {
+    "apiKey": "",
+    "model": "gpt-4o-mini",
+    "maxTokens": 150
+  },
+  "persona": {
+    "enableAutoCreation": true,
+    "enableOpenAI": true,
+    "commentProbability": 0.3,
+    "likeProbability": 0.5,
+    "minSleepMs": 5000,
+    "maxSleepMs": 100000,
+    "screenshotCount": 3
+  },
+  "schedule": {
+    "checkCommandsInterval": 600000,
+    "exploreDuration": 1800000,
+    "enableScheduler": true,
+    "startHour": 0,
+    "endHour": 23,
+    "peakHours": [10, 14, 20]
+  },
+  "exploration": {
+    "keywordPool": [
+      "일상 브이로그",
+      "요리 레시피",
+      "여행 영상",
+      "게임 플레이",
+      "음악 추천",
+      "운동 루틴",
+      "영화 리뷰",
+      "ASMR",
+      "반려동물",
+      "뷰티 팁",
+      "과학 다큐",
+      "역사 이야기"
+    ],
+    "maxVideosPerSession": 5,
+    "minWatchDuration": 30,
+    "maxWatchDuration": 150
+  }
+}
