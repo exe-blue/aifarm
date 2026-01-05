@@ -221,6 +221,196 @@ async def health_check():
     }
 
 
+# ==================== Activity #4: Open Injection API ====================
+
+@app.post("/api/injection")
+async def create_injection(request: dict):
+    """
+    Activity #4: Open Injection (일반 유저 광고)
+
+    600대 노드가 지정된 YouTube URL로 일제히 이동
+
+    Request:
+    {
+      "url": "https://www.youtube.com/watch?v=...",
+      "duration": 300  // 시청 시간 (초), 기본 5분
+    }
+
+    Response:
+    {
+      "success": true,
+      "injection_id": "inj-1704567890",
+      "nodes_activated": 5,
+      "total_devices": 600,
+      "target_url": "..."
+    }
+    """
+    try:
+        url = request.get('url')
+        duration = request.get('duration', 300)
+
+        if not url:
+            raise HTTPException(status_code=400, detail="URL이 필요합니다")
+
+        # YouTube URL 검증
+        if 'youtube.com' not in url and 'youtu.be' not in url:
+            raise HTTPException(status_code=400, detail="유효한 YouTube URL이 아닙니다")
+
+        injection_id = f"inj-{int(time.time())}"
+
+        # 모든 온라인 노드에 Job 할당
+        online_nodes = list(active_connections.keys())
+        total_devices = sum(
+            state.nodes[n].device_count
+            for n in online_nodes
+            if n in state.nodes
+        )
+
+        # Job 등록 및 전송
+        for node_id in online_nodes:
+            if node_id in active_connections:
+                ws = active_connections[node_id]
+
+                await ws.send_json({
+                    'type': 'JOB_ASSIGN',
+                    'node_id': node_id,
+                    'ts': int(time.time()),
+                    'seq': state.get_next_seq('orchestrator'),
+                    'ack_seq': state.get_node_seq(node_id),
+                    'payload': {
+                        'job_id': injection_id,
+                        'action': 'YOUTUBE_OPEN_URL',
+                        'device_ids': ['all'],
+                        'params': {
+                            'url': url,
+                            'duration': duration,
+                            'injection_mode': True
+                        },
+                        'idempotency_key': injection_id
+                    }
+                })
+
+        logger.info(f"🚀 Injection 시작: {injection_id} → {len(online_nodes)}개 노드, {total_devices}대 디바이스")
+
+        return {
+            "success": True,
+            "injection_id": injection_id,
+            "nodes_activated": len(online_nodes),
+            "total_devices": total_devices,
+            "target_url": url,
+            "duration": duration
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Injection 실패: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== Activity #1: CCTV Grid API ====================
+
+@app.get("/api/nodes/live")
+async def get_nodes_live():
+    """
+    Activity #1: 실시간 노드 시청 상태 (CCTV Grid용)
+
+    Response:
+    {
+      "nodes": [
+        {
+          "node_id": "node-001",
+          "status": "online",
+          "devices": [
+            {
+              "device_id": "dev-001",
+              "current_video": "Cute Cat Compilation",
+              "persona": "Animal Lover",
+              "watch_time": 120
+            }
+          ]
+        }
+      ],
+      "total_devices": 600,
+      "total_online": 5
+    }
+    """
+    nodes_data = []
+    total_devices = 0
+
+    for node_id, node in state.nodes.items():
+        devices_info = []
+
+        # 디바이스 정보 생성 (실제 or 시뮬레이션)
+        for i, device in enumerate(node.devices or []):
+            devices_info.append({
+                "device_id": device.get('id', f"dev-{node_id}-{i}"),
+                "current_video": device.get('current_video', 'Random Video'),
+                "persona": device.get('persona', 'Building...'),
+                "watch_time": device.get('watch_time', 0),
+                "status": device.get('status', 'watching')
+            })
+
+        # 디바이스 정보가 없으면 시뮬레이션 데이터 생성
+        if not devices_info and node.device_count > 0:
+            import random
+            personas = ['Animal Lover', 'Tech Enthusiast', 'Music Fan', 'Gamer', 'News Reader', 'Investor']
+            videos = ['Cute Cat', 'AI News', 'K-Pop MV', 'Game Stream', 'Stock Analysis', 'Cooking Show']
+
+            for i in range(min(node.device_count, 10)):  # 최대 10개만 표시
+                devices_info.append({
+                    "device_id": f"dev-{node_id}-{i:03d}",
+                    "current_video": random.choice(videos),
+                    "persona": random.choice(personas),
+                    "watch_time": random.randint(30, 300),
+                    "status": "watching"
+                })
+
+        nodes_data.append({
+            "node_id": node_id,
+            "status": node.status.value,
+            "device_count": node.device_count,
+            "devices": devices_info
+        })
+
+        total_devices += node.device_count
+
+    return {
+        "nodes": nodes_data,
+        "total_devices": total_devices,
+        "total_online": len([n for n in state.nodes.values() if n.status.value == 'online']),
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@app.get("/api/stats")
+async def get_stats():
+    """
+    대시보드 통계 API
+    """
+    online_nodes = [n for n in state.nodes.values() if n.status.value == 'online']
+    total_devices = sum(n.device_count for n in online_nodes)
+
+    return {
+        "nodes": {
+            "total": len(state.nodes),
+            "online": len(online_nodes)
+        },
+        "devices": {
+            "total": total_devices,
+            "active": total_devices  # TODO: 실제 활동 중인 디바이스 수
+        },
+        "injections": {
+            "today": len([j for j in state.jobs.values()
+                         if j.action == 'YOUTUBE_OPEN_URL'
+                         and time.time() - j.created_at < 86400]),
+            "total": len([j for j in state.jobs.values()
+                         if j.action == 'YOUTUBE_OPEN_URL'])
+        },
+        "uptime": time.time() - state.start_time
+    }
+
+
 @app.get("/nodes")
 async def get_nodes(token: str = Depends(require_admin)):
     """
