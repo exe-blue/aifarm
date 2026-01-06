@@ -16,23 +16,31 @@
 -- ============================================================
 
 -- 노드 상태 열거형
-CREATE TYPE node_status AS ENUM (
-    'ONLINE',       -- 정상: 연결됨, 심장박동 수신 중
-    'OFFLINE',      -- 단절: 연결 끊김, 심장박동 없음
-    'ISOLATED',     -- 격리: 연결됐으나 의도적으로 작업 중단
-    'DEGRADED',     -- 저하: 연결됐으나 일부 기능 제한
-    'INITIALIZING'  -- 초기화: 부팅 중, 아직 준비 안 됨
-);
+DO $$ BEGIN
+    CREATE TYPE node_status AS ENUM (
+        'ONLINE',       -- 정상: 연결됨, 심장박동 수신 중
+        'OFFLINE',      -- 단절: 연결 끊김, 심장박동 없음
+        'ISOLATED',     -- 격리: 연결됐으나 의도적으로 작업 중단
+        'DEGRADED',     -- 저하: 연결됐으나 일부 기능 제한
+        'INITIALIZING'  -- 초기화: 부팅 중, 아직 준비 안 됨
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- 노드 유형 열거형
-CREATE TYPE node_type AS ENUM (
-    'TITAN',        -- Titan Node: 워크스테이션 (T5810)
-    'CENTRAL',      -- Central Server: Vultr
-    'EDGE'          -- Edge Node: 향후 확장용 (라즈베리파이 등)
-);
+DO $$ BEGIN
+    CREATE TYPE node_type AS ENUM (
+        'TITAN',        -- Titan Node: 워크스테이션 (T5810)
+        'CENTRAL',      -- Central Server: Vultr
+        'EDGE'          -- Edge Node: 향후 확장용 (라즈베리파이 등)
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Node Health: 실시간 대시보드의 심장
-CREATE TABLE node_health (
+CREATE TABLE IF NOT EXISTS node_health (
     -- Identity
     node_id VARCHAR(20) PRIMARY KEY,  -- 예: 'TITAN-01', 'TITAN-02', ...
     node_type node_type NOT NULL DEFAULT 'TITAN',
@@ -80,11 +88,11 @@ CREATE TABLE node_health (
 );
 
 -- Index for status monitoring
-CREATE INDEX idx_node_health_status 
+CREATE INDEX IF NOT EXISTS idx_node_health_status 
     ON node_health(status, last_heartbeat DESC);
 
 -- Index for dashboard queries
-CREATE INDEX idx_node_health_active 
+CREATE INDEX IF NOT EXISTS idx_node_health_active 
     ON node_health(status)
     WHERE status IN ('ONLINE', 'DEGRADED');
 
@@ -94,53 +102,65 @@ CREATE INDEX idx_node_health_active
 -- ============================================================
 
 -- 작업 상태 열거형
-CREATE TYPE job_status AS ENUM (
-    'PENDING',      -- 대기: 아직 할당 안 됨
-    'ASSIGNED',     -- 할당: 노드에 배정됨, 아직 전송 안 됨
-    'SENT',         -- 전송: 노드에 전송됨, 응답 대기 중
-    'RUNNING',      -- 실행: 노드에서 실행 중
-    'COMPLETED',    -- 완료: 성공적으로 완료
-    'FAILED',       -- 실패: 오류로 종료
-    'TIMEOUT',      -- 시간초과: 응답 없이 만료
-    'CANCELLED'     -- 취소: 명시적으로 취소됨
-);
+DO $$ BEGIN
+    CREATE TYPE job_status AS ENUM (
+        'PENDING',      -- 대기: 아직 할당 안 됨
+        'ASSIGNED',     -- 할당: 노드에 배정됨, 아직 전송 안 됨
+        'SENT',         -- 전송: 노드에 전송됨, 응답 대기 중
+        'RUNNING',      -- 실행: 노드에서 실행 중
+        'COMPLETED',    -- 완료: 성공적으로 완료
+        'FAILED',       -- 실패: 오류로 종료
+        'TIMEOUT',      -- 시간초과: 응답 없이 만료
+        'CANCELLED'     -- 취소: 명시적으로 취소됨
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- 작업 우선순위 열거형
-CREATE TYPE job_priority AS ENUM (
-    'CRITICAL',     -- 0: 즉시 실행 (시스템 명령)
-    'HIGH',         -- 1: 높은 우선순위
-    'NORMAL',       -- 2: 일반
-    'LOW',          -- 3: 낮은 우선순위
-    'BACKGROUND'    -- 4: 백그라운드 (유휴 시 실행)
-);
+DO $$ BEGIN
+    CREATE TYPE job_priority AS ENUM (
+        'CRITICAL',     -- 0: 즉시 실행 (시스템 명령)
+        'HIGH',         -- 1: 높은 우선순위
+        'NORMAL',       -- 2: 일반
+        'LOW',          -- 3: 낮은 우선순위
+        'BACKGROUND'    -- 4: 백그라운드 (유휴 시 실행)
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- 작업 유형 열거형
-CREATE TYPE job_type AS ENUM (
-    -- Device Control
-    'YOUTUBE_WATCH',
-    'YOUTUBE_LIKE',
-    'YOUTUBE_COMMENT',
-    'YOUTUBE_SUBSCRIBE',
-    
-    -- System Operations
-    'DEVICE_REBOOT',
-    'DEVICE_SCREENSHOT',
-    'DEVICE_STATUS_CHECK',
-    'APP_LAUNCH',
-    'APP_CLOSE',
-    
-    -- Batch Operations
-    'BATCH_COMMAND',
-    'SYNC_REQUEST',
-    
-    -- Maintenance
-    'HEALTH_CHECK',
-    'LOG_COLLECT',
-    'CONFIG_UPDATE'
-);
+DO $$ BEGIN
+    CREATE TYPE job_type AS ENUM (
+        -- Device Control
+        'YOUTUBE_WATCH',
+        'YOUTUBE_LIKE',
+        'YOUTUBE_COMMENT',
+        'YOUTUBE_SUBSCRIBE',
+        
+        -- System Operations
+        'DEVICE_REBOOT',
+        'DEVICE_SCREENSHOT',
+        'DEVICE_STATUS_CHECK',
+        'APP_LAUNCH',
+        'APP_CLOSE',
+        
+        -- Batch Operations
+        'BATCH_COMMAND',
+        'SYNC_REQUEST',
+        
+        -- Maintenance
+        'HEALTH_CHECK',
+        'LOG_COLLECT',
+        'CONFIG_UPDATE'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Job Queue: 중앙 영속 큐 (Idempotent)
-CREATE TABLE job_queue (
+CREATE TABLE IF NOT EXISTS job_queue (
     -- Identity (Idempotency Key)
     job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     idempotency_key VARCHAR(64) UNIQUE,  -- 외부 시스템에서 부여한 고유 키
@@ -204,27 +224,27 @@ CREATE TABLE job_queue (
 );
 
 -- Index for pending job polling (Pull-based Push)
-CREATE INDEX idx_job_queue_pending 
+CREATE INDEX IF NOT EXISTS idx_job_queue_pending 
     ON job_queue(target_node, priority, created_at)
     WHERE status = 'PENDING';
 
 -- Index for assigned job tracking
-CREATE INDEX idx_job_queue_assigned 
+CREATE INDEX IF NOT EXISTS idx_job_queue_assigned 
     ON job_queue(target_node, assigned_at)
     WHERE status IN ('ASSIGNED', 'SENT', 'RUNNING');
 
 -- Index for timeout detection
-CREATE INDEX idx_job_queue_timeout 
+CREATE INDEX IF NOT EXISTS idx_job_queue_timeout 
     ON job_queue(sent_at, timeout_sec)
     WHERE status IN ('SENT', 'RUNNING');
 
 -- Index for idempotency lookup
-CREATE INDEX idx_job_queue_idempotency 
+CREATE INDEX IF NOT EXISTS idx_job_queue_idempotency 
     ON job_queue(idempotency_key)
     WHERE idempotency_key IS NOT NULL;
 
 -- Index for correlation queries
-CREATE INDEX idx_job_queue_correlation 
+CREATE INDEX IF NOT EXISTS idx_job_queue_correlation 
     ON job_queue(correlation_id)
     WHERE correlation_id IS NOT NULL;
 

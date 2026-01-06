@@ -146,10 +146,12 @@ this.timeout = config?.settings?.timeout || 30000;
 
 ## 커밋 메시지 형식
 ```
+
 feat(foundation): [작업내용]
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+
 ```
 ```
 
@@ -207,6 +209,7 @@ clickLike(forceLike = null) {
 ```
 
 ### 2. youtube.js - writeComment() 파라미터 지원
+
 현재 상태: 내부 템플릿에서 랜덤 선택
 목표: 외부에서 commentText 전달 가능
 
@@ -264,6 +267,7 @@ getRandomComment() {
 ```
 
 ### 3. youtube.js - extractVideoInfo() 신규 추가
+
 목표: 현재 재생 중인 영상 정보 추출
 
 ```javascript
@@ -290,6 +294,7 @@ extractVideoInfo() {
 ```
 
 ## 완료 기준
+
 - [ ] `clickLike(true)` 호출 시 강제 좋아요
 - [ ] `clickLike(false)` 호출 시 좋아요 스킵
 - [ ] `clickLike()` 호출 시 기존 확률 동작
@@ -297,15 +302,18 @@ extractVideoInfo() {
 - [ ] `extractVideoInfo()` 호출 시 영상 제목/채널 반환
 
 ## 브랜치
+
 `feature/pr-03-core-automation`
 
 ## 커밋 메시지 형식
+
 ```
 feat(youtube): clickLike/writeComment 파라미터 지원 추가
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
+
 ```
 
 ---
@@ -404,6 +412,7 @@ CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON persona_activity_logs(cr
 ```
 
 ### 2. Supabase 연결 모듈 생성
+
 파일: `/services/persona-service/db.py` (신규)
 
 ```python
@@ -441,14 +450,17 @@ def reset_client():
 ```
 
 ### 3. main.py SQLite → Supabase 전환
+
 파일: `/services/persona-service/main.py`
 
 주요 변경:
+
 1. `import sqlite3` 제거
 2. `from db import get_supabase_client` 추가
 3. 모든 SQL 쿼리를 Supabase Python SDK 호출로 변경
 
 예시 변환:
+
 ```python
 # 수정 전 (SQLite)
 def get_db():
@@ -474,29 +486,35 @@ row = result.data[0] if result.data else None
 ```
 
 ### 4. existence_machine.py 수정
+
 - DB 의존성 제거 (순수 로직만 유지)
 - 이미 상태 없음 (확인 필요)
 
 ### 5. attention_economy.py 수정
+
 - DB 의존성 제거 (순수 로직만 유지)
 - 이미 상태 없음 (확인 필요)
 
 ## 완료 기준
+
 - [ ] 마이그레이션 스크립트 실행 성공
 - [ ] `services/persona-service/` 에서 SQLite import 제거
 - [ ] 모든 CRUD가 Supabase로 동작
 - [ ] 기존 테스트 통과 (있다면)
 
 ## 브랜치
+
 `feature/pr-02-supabase-unification`
 
 ## 환경변수 필요
+
 ```bash
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 ## 커밋 메시지 형식
+
 ```
 feat(db): SQLite → Supabase 단일화
 
@@ -507,6 +525,7 @@ feat(db): SQLite → Supabase 단일화
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
+
 ```
 
 ---
@@ -620,6 +639,7 @@ module.exports = InteractionEngine;
 ```
 
 ### 2. openai-helper.js 완성
+
 파일: `/autox-scripts/persona-automation/modules/openai-helper.js`
 
 ```javascript
@@ -790,6 +810,7 @@ module.exports = OpenAIHelper;
 ```
 
 ## 완료 기준
+
 - [ ] OpenAI API 키 있을 때: 페르소나 기반 댓글 생성
 - [ ] OpenAI API 키 없을 때: 폴백 템플릿 댓글
 - [ ] 댓글 길이 100자 이내
@@ -797,6 +818,7 @@ module.exports = OpenAIHelper;
 - [ ] 에러 시 graceful degradation
 
 ## 환경변수 필요
+
 ```javascript
 // config/variables.json
 {
@@ -808,9 +830,11 @@ module.exports = OpenAIHelper;
 ```
 
 ## 브랜치
+
 `feature/pr-07-openai-interaction`
 
 ## 커밋 메시지 형식
+
 ```
 feat(openai): 페르소나 기반 댓글 생성 구현
 
@@ -821,6 +845,7 @@ feat(openai): 페르소나 기반 댓글 생성 구현
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
+
 ```
 
 ---
@@ -997,15 +1022,18 @@ module.exports = ContentExplorer;
 ```
 
 ## 완료 기준
+
 - [ ] config undefined 시 크래시 없음
 - [ ] variables.json 없을 때 폴백 동작
 - [ ] 페르소나 선호 카테고리 우선 선택
 - [ ] 탐색 실패 시 에러 핸들링
 
 ## 브랜치
+
 `feature/pr-08-content-explorer`
 
 ## 커밋 메시지 형식
+
 ```
 feat(explorer): 자율 탐색 안정화
 
@@ -1016,6 +1044,7 @@ feat(explorer): 자율 탐색 안정화
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
+
 ```
 
 ---
@@ -1218,6 +1247,7 @@ module.exports = router;
 ```
 
 ### 2. traces.js 라우터 생성
+
 파일: `/gateway/src/api/routes/traces.js` (신규)
 
 ```javascript
@@ -1280,9 +1310,11 @@ module.exports = router;
 ```
 
 ### 3. youtube-videos.js 수정
+
 파일: `/gateway/src/api/routes/youtube-videos.js`
 
 쿼리 파라미터 추가:
+
 ```javascript
 // 기존
 router.get('/today', async (req, res) => {
@@ -1351,6 +1383,7 @@ router.post('/tasks/complete', async (req, res) => {
 ```
 
 ### 4. 라우터 등록
+
 파일: `/gateway/src/api/index.js` 또는 `/gateway/server.js`
 
 ```javascript
@@ -1362,6 +1395,7 @@ app.use('/api/traces', tracesRouter);
 ```
 
 ## 완료 기준
+
 - [ ] GET /api/personas/:deviceSerial 동작
 - [ ] POST /api/personas 생성 성공
 - [ ] PATCH /api/personas/:id/path 업데이트 성공
@@ -1369,9 +1403,11 @@ app.use('/api/traces', tracesRouter);
 - [ ] POST /api/youtube/tasks/complete 동작
 
 ## 브랜치
+
 `feature/pr-04-gateway-api`
 
 ## 커밋 메시지 형식
+
 ```
 feat(gateway): 페르소나/트레이스 API 추가
 
@@ -1383,6 +1419,7 @@ feat(gateway): 페르소나/트레이스 API 추가
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
+
 ```
 
 ---
@@ -1609,24 +1646,29 @@ module.exports = PersonaManager;
 ```
 
 ### 2. persona-checker.js 완성
+
 스크린샷 캡처 및 키워드 추출 로직 추가
 
 ## 완료 기준
+
 - [ ] api.getPersona() 호출 및 응답 매핑
 - [ ] api.createPersona() 호출 성공
 - [ ] api.updatePersonaPath() 호출 성공
 - [ ] Supabase 응답 형식 → 내부 형식 변환
 
 ## 브랜치
+
 `feature/pr-06-persona-system`
 
 ## 커밋 메시지 형식
+
 ```
 feat(persona): API 응답 매핑 및 생성 로직 완성
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
+
 ```
 
 ---
@@ -1846,6 +1888,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ## 완료 기준
+
 - [ ] getPersona(deviceSerial) 동작
 - [ ] createPersona(data) 동작
 - [ ] updatePersonaPath(personaId, data) 동작
@@ -1853,9 +1896,11 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 - [ ] completeVideoTask(data) 동작
 
 ## 브랜치
+
 `feature/pr-05-api-client`
 
 ## 커밋 메시지 형식
+
 ```
 feat(api): 페르소나/트레이스 API 클라이언트 함수 추가
 
@@ -1866,6 +1911,7 @@ feat(api): 페르소나/트레이스 API 클라이언트 함수 추가
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
+
 ```
 
 ---
@@ -2023,15 +2069,18 @@ getTodayVideos(params) {
 ```
 
 ## 완료 기준
+
 - [ ] 현재 시간 기준으로 공개된 영상만 조회
 - [ ] 'assigned' 상태 영상만 필터링
 - [ ] 중복 실행 방지 (executedVideoIds)
 - [ ] 자정 초기화 동작
 
 ## 브랜치
+
 `feature/pr-09-command-fetch`
 
 ## 커밋 메시지 형식
+
 ```
 feat(command): 시간대별 지시 영상 조회 수정
 
@@ -2041,6 +2090,7 @@ feat(command): 시간대별 지시 영상 조회 수정
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
+
 ```
 
 ---
@@ -2072,13 +2122,14 @@ const videoInfo = await youtube.extractVideoInfo();
 await personaManager.updatePreferences(currentPersona.id, keyword, videoInfo);
 ```
 
-2. **모듈 import 경로 확인**
+1. **모듈 import 경로 확인**
 모든 require 경로가 올바른지 확인
 
-3. **에러 핸들러 참조 수정**
+2. **에러 핸들러 참조 수정**
 errorHandler 인스턴스 참조 확인
 
-4. **리소스 정리 로직**
+3. **리소스 정리 로직**
+
 ```javascript
 // 종료 시 cleanup
 process.on('SIGTERM', () => {
@@ -2088,6 +2139,7 @@ process.on('SIGTERM', () => {
 ```
 
 ## 통합 테스트 체크리스트
+
 - [ ] 페르소나 초기화 성공
 - [ ] 지시 영상 수신
 - [ ] 영상 시청 완료
@@ -2097,9 +2149,11 @@ process.on('SIGTERM', () => {
 - [ ] 24시간 실행 안정성
 
 ## 브랜치
+
 `feature/pr-10-orchestration`
 
 ## 커밋 메시지 형식
+
 ```
 feat(main): 페르소나 자동화 최종 통합
 
@@ -2110,6 +2164,7 @@ feat(main): 페르소나 자동화 최종 통합
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
+
 ```
 
 ---

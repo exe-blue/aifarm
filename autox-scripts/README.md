@@ -131,6 +131,8 @@ python main.py
 
 ### 전체 플로우
 
+**Architecture: PC Orchestration (Phoneboard Model)**
+
 ```
 ┌─────────────┐       ┌──────────────┐       ┌─────────────┐
 │   관리자    │       │   Backend    │       │  AutoX.js   │

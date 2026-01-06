@@ -15,6 +15,7 @@ const os = require('os');
 
 // --- Configuration ---
 const CallbackServer = require('./lib/callback-server');
+const { getSystemStats } = require('./lib/system-monitor');
 const LaixiClient = require('./lib/laixi-client');
 const LAIXI_API_URL = process.env.LAIXI_API_URL || 'http://127.0.0.1:9317';
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -102,7 +103,7 @@ async function processDevice(device) {
         const finalScript = envInjection + "\n" + scriptTemplate;
 
         // 5. Run Script
-        const success = await laixi.runScript(serial, finalScript);
+        const success = await Laixi.runScript(serial, finalScript);
         
         if (success) {
             DeviceState.set(serial, { taskId: task.id, startTime: Date.now() });
@@ -162,13 +163,43 @@ async function processSystemJobs() {
     }
 }
 
+async function updateNodeHealth(connectedDevicesCount) {
+    try {
+        const systemStats = await getSystemStats();
+        
+        const resources = {
+            ...systemStats,
+            connected_devices: connectedDevicesCount,
+            active_tasks: DeviceState.size,
+        };
+
+        // RPC: process_heartbeat (from 011_infrastructure_schema.sql)
+        const { error } = await supabase.rpc('process_heartbeat', {
+            p_node_id: NODE_ID,
+            p_resources: resources
+        });
+
+        if (error) {
+            console.error(`[NodeHealth] Error updating node health: ${error.message}`);
+        } else {
+            console.log(`[NodeHealth] Health updated: CPU ${resources.cpu_percent}%, MEM ${resources.memory_percent}%`);
+        }
+    } catch (e) {
+        console.error(`[NodeHealth] Failed to collect or send system stats: ${e.message}`);
+    }
+}
+
 async function loop() {
     // 1. Process System Jobs (High Priority)
     await processSystemJobs();
 
     // 2. Process Device Tasks
     const devices = await laixi.getDevices();
-    console.log(`[Heartbeat] Connected Devices: ${devices.length}`);
+    console.log(`[Heartbeat] Connected Devices: ${devices.length} (Node: ${NODE_ID})`);
+
+    // 3. Update this Node's Health
+    await updateNodeHealth(devices.length);
+
     for (const device of devices) {
         await processDevice(device);
     }

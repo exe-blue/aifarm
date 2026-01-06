@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -7,7 +7,13 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 let supabase: SupabaseClient;
 
 if (supabaseUrl && supabaseAnonKey) {
-  supabase = createClient(supabaseUrl, supabaseAnonKey);
+  supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    realtime: {
+      params: {
+        eventsPerSecond: 10
+      }
+    }
+  });
 } else {
   // 빌드 시 또는 환경 변수 미설정 시 dummy 클라이언트 (런타임에서 실제로 사용하면 에러)
   supabase = createClient(
@@ -18,6 +24,25 @@ if (supabaseUrl && supabaseAnonKey) {
 }
 
 export { supabase };
+export type { RealtimeChannel };
+
+// Auth 헬퍼
+export const auth = {
+  getSession: async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session;
+  },
+  getUser: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
+  },
+  signIn: async (email: string, password: string) => {
+    return await supabase.auth.signInWithPassword({ email, password });
+  },
+  signOut: async () => {
+    return await supabase.auth.signOut();
+  },
+};
 
 // 타입 안전한 테이블 이름
 export const TABLES = {

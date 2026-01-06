@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
-import { MockNode, nodeStatusColors } from "@/utils/mock-data";
+import { nodeStatusColors } from "@/utils/mock-data";
+import type { GridNode } from "./NodeGrid";
 
 export const NodeDot = ({
   node,
   onHover,
 }: {
-  node: MockNode;
+  node: GridNode;
   onHover: () => void;
 }) => {
   const color = nodeStatusColors[node.status];

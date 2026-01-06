@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
-import { MockNode, nodeStatusColors } from "@/utils/mock-data";
+import { nodeStatusColors } from "@/utils/mock-data";
+import type { GridNode } from "./NodeGrid";
 
 export const NodeTooltip = ({
   node,
   position,
 }: {
-  node: MockNode;
+  node: GridNode;
   position: { x: number; y: number };
 }) => {
   const echotionQuotes = [
@@ -44,10 +45,11 @@ export const NodeTooltip = ({
 
         {/* Info */}
         <div className="space-y-2 font-mono text-xs text-ethereal-dim">
-          <div>Serial: {node.name}</div>
+          <div>Name: {node.personaName || node.name}</div>
+          {node.serial && <div>Serial: {node.serial}</div>}
+          {node.model && <div>Model: {node.model}</div>}
+          {node.nodeId && <div>Node: {node.nodeId}</div>}
           <div>Status: <span style={{ color: nodeStatusColors[node.status] }}>{node.status}</span></div>
-          <div>Current: Watching YouTube</div>
-          <div>Duration: 3m 42s</div>
         </div>
 
         {/* Divider */}

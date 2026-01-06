@@ -477,6 +477,84 @@ $$;
 COMMENT ON FUNCTION batch_update_existence_states IS
     '전체 페르소나 상태 일괄 업데이트. Cron으로 주기적 실행 권장';
 
+-- ────────────────────────────────────────────────────────────
+-- 7. device_heartbeat
+-- 디바이스 하트비트 (상태 보고용)
+-- ────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION device_heartbeat(
+    p_device_serial TEXT,
+    p_node_id TEXT,
+    p_battery INTEGER DEFAULT NULL,
+    p_status TEXT DEFAULT 'online'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_persona_id UUID;
+    v_previous_state existence_state_enum;
+BEGIN
+    -- 디바이스 시리얼로 페르소나 조회
+    SELECT id, existence_state
+    INTO v_persona_id, v_previous_state
+    FROM personas
+    WHERE device_serial = p_device_serial;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', FALSE,
+            'error', 'Persona not found for device: ' || p_device_serial
+        );
+    END IF;
+
+    -- 페르소나 상태 갱신
+    UPDATE personas
+    SET
+        last_called_at = NOW(),
+        existence_state = 'active',
+        updated_at = NOW()
+    WHERE id = v_persona_id;
+
+    -- Void에서 복귀한 경우 로그 기록
+    IF v_previous_state = 'void' THEN
+        INSERT INTO persona_activity_logs (
+            persona_id,
+            activity_type,
+            metadata
+        ) VALUES (
+            v_persona_id,
+            'state_change',
+            jsonb_build_object(
+                'from', 'void',
+                'to', 'active',
+                'trigger', 'heartbeat',
+                'node_id', p_node_id
+            )
+        );
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', TRUE,
+        'persona_id', v_persona_id,
+        'timestamp', NOW(),
+        'previous_state', v_previous_state::TEXT,
+        'battery', p_battery,
+        'node_id', p_node_id
+    );
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN jsonb_build_object(
+            'success', FALSE,
+            'error', SQLERRM
+        );
+END;
+$$;
+
+COMMENT ON FUNCTION device_heartbeat IS
+    '디바이스 하트비트. last_called_at 갱신, existence_state를 active로 변경';
+
 -- ============================================================
 -- RPC 함수 정의 완료
 -- ============================================================
@@ -490,5 +568,6 @@ BEGIN
     RAISE NOTICE '   4. update_existence_state(persona_id)';
     RAISE NOTICE '   5. get_persona_stats(persona_id)';
     RAISE NOTICE '   6. batch_update_existence_states()';
+    RAISE NOTICE '   7. device_heartbeat(device_serial, node_id, battery, status)';
 END
 $$;
