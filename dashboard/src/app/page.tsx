@@ -1,48 +1,38 @@
 /**
  * DoAi.Me Landing Page
- * "The Terminal of Being"
+ * 깔끔하고 일관된 디자인
  *
- * Aria's Design: 6개 섹션 통합
- * - Activity #4: Open Injection (최상단)
- * - Activity #1: The Incubator (CCTV Grid)
- *
- * @author Axon (Builder)
- * @design Aria (Philosopher)
+ * @author DoAi.Me Team
  */
 
 'use client';
 
-import { TerminalInterface } from "@/components/terminal/TerminalInterface";
-import { InjectionForm } from "@/components/injection/InjectionForm";
-import { CCTVGrid } from "@/components/incubator/CCTVGrid";
-import { ManifestoSection } from "@/components/manifesto/ManifestoSection";
-import { MechanismSection } from "@/components/mechanism/MechanismSection";
-import { NodeGrid } from "@/components/observer/NodeGrid";
-import { ConnectionSection } from "@/components/connection/ConnectionSection";
+import { Header } from "@/components/common/Header";
+import { HeroSection } from "@/components/landing/HeroSection";
+import { AboutSection } from "@/components/landing/AboutSection";
+import { FeaturesSection } from "@/components/landing/FeaturesSection";
+import { CTASection } from "@/components/landing/CTASection";
+import { Footer } from "@/components/common/Footer";
 
 export default function HomePage() {
   return (
-    <main className="bg-void text-ethereal min-h-screen">
-      {/* Section 1: The Terminal (Hero) */}
-      <TerminalInterface />
+    <main className="bg-[#050505] text-white min-h-screen">
+      <Header />
 
-      {/* Section 2: Activity #4 - Open Injection (최우선 수익화) */}
-      <InjectionForm />
+      {/* Hero - 메인 히어로 섹션 */}
+      <HeroSection />
 
-      {/* Section 3: Activity #1 - The Incubator (CCTV Grid) */}
-      <CCTVGrid />
+      {/* About - 서비스 소개 */}
+      <AboutSection />
 
-      {/* Section 4: The Manifesto */}
-      <ManifestoSection />
+      {/* Features - 주요 기능 */}
+      <FeaturesSection />
 
-      {/* Section 5: Mechanism */}
-      <MechanismSection />
+      {/* CTA - 가입 유도 */}
+      <CTASection />
 
-      {/* Section 6: The Observer */}
-      <NodeGrid />
-
-      {/* Section 7: Connection */}
-      <ConnectionSection />
+      {/* Footer */}
+      <Footer />
     </main>
   );
 }
