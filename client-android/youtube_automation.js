@@ -11,10 +11,10 @@
 auto.waitFor();
 
 // 휴먼 패턴 모듈 로드
-var HumanPatterns = require("./human_patterns.js");
+const HumanPatterns = require("./human_patterns.js");
 
 // ==================== 설정 ====================
-var CONFIG = {
+const CONFIG = {
     // 서버 설정 (마이크로서비스)
     API_GATEWAY_URL: "http://localhost:8000",
     PATTERN_SERVICE_URL: "http://localhost:8004",
@@ -40,7 +40,7 @@ var CONFIG = {
 };
 
 // 검색 경로 타입
-var SEARCH_TYPE = {
+const SEARCH_TYPE = {
     KEYWORD: 1,
     RECENT: 2,
     TITLE: 3,
@@ -48,11 +48,11 @@ var SEARCH_TYPE = {
 };
 
 // ==================== 상태 변수 ====================
-var videoQueue = [];
-var completedVideos = [];
-var currentVideo = null;
-var isRunning = false;
-var stats = {
+let videoQueue = [];
+let completedVideos = [];
+let currentVideo = null;
+let isRunning = false;
+const stats = {
     completed: 0,
     error: 0,
     pending: 0
@@ -67,7 +67,7 @@ if (!floaty.checkPermission()) {
     exit();
 }
 
-var xml = <scroll id='scroll' fillViewport="true">
+const xml = <scroll id='scroll' fillViewport="true">
     <vertical id="mainUI" padding="16" bg="#1a1a2e">
         <text text="🎬 YouTube 자동화 v2.0" textSize="26dp" textColor="#e94560" gravity="center"/>
         <text text="휴먼 패턴 시뮬레이션 적용" textSize="14dp" textColor="#666" gravity="center" marginBottom="16"/>
@@ -170,16 +170,16 @@ function updateStats() {
 function takeScreenshot(videoId) {
     try {
         files.ensureDir(CONFIG.SCREENSHOT_PATH);
-        var timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-        var filename = videoId + "_" + timestamp + ".png";
-        var filepath = CONFIG.SCREENSHOT_PATH + filename;
+        const timestamp = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
+        const filename = videoId + "_" + timestamp + ".png";
+        const filepath = CONFIG.SCREENSHOT_PATH + filename;
         
         if (!requestScreenCapture()) {
             logStatus("화면 캡처 권한 필요");
             return null;
         }
         
-        var img = captureScreen();
+        const img = captureScreen();
         images.save(img, filepath);
         img.recycle();
         
@@ -202,7 +202,7 @@ function fetchVideoListFromServer() {
     try {
         logStatus("서버에서 영상 목록 가져오는 중...");
         
-        var response = http.get(CONFIG.API_GATEWAY_URL + "/videos", {
+        const response = http.get(CONFIG.API_GATEWAY_URL + "/videos", {
             headers: {
                 "Authorization": "Bearer " + CONFIG.API_KEY,
                 "Content-Type": "application/json"
@@ -210,9 +210,9 @@ function fetchVideoListFromServer() {
         });
         
         if (response.statusCode === 200) {
-            var data = response.body.json();
+            const data = response.body.json();
             videoQueue = data.videos.filter(function(v) {
-                return completedVideos.indexOf(v.id) === -1;
+                return !completedVideos.includes(v.id);
             });
             updateStats();
             logStatus("영상 " + videoQueue.length + "개 로드됨");
@@ -229,7 +229,7 @@ function fetchVideoListFromServer() {
 
 function sendResultToServer(result) {
     try {
-        var response = http.postJson(CONFIG.API_GATEWAY_URL + "/results", result, {
+        const response = http.postJson(CONFIG.API_GATEWAY_URL + "/results", result, {
             headers: {
                 "Authorization": "Bearer " + CONFIG.API_KEY
             }
@@ -251,13 +251,13 @@ function launchYouTube() {
 }
 
 function openSearch() {
-    var searchBtn = id("menu_item_1").findOne(3000) || 
+    const searchBtn = id("menu_item_1").findOne(3000) || 
                     desc("검색").findOne(3000) || 
                     desc("Search").findOne(3000);
     
     if (searchBtn) {
         // 자연스러운 클릭
-        var bounds = searchBtn.bounds();
+        const bounds = searchBtn.bounds();
         HumanPatterns.naturalClick(bounds.centerX(), bounds.centerY(), bounds.width(), bounds.height());
         sleep(1500);
         return true;
@@ -268,7 +268,7 @@ function openSearch() {
 function searchQuery(query, useRecentFilter) {
     logStatus("검색: " + query);
     
-    var searchInput = className("android.widget.EditText").findOne(3000);
+    const searchInput = className("android.widget.EditText").findOne(3000);
     if (!searchInput) return false;
     
     // 자연스러운 타이핑
@@ -288,19 +288,19 @@ function searchQuery(query, useRecentFilter) {
 function applyRecentFilter() {
     logStatus("최근 1시간 필터 적용 중...");
     
-    var filterBtn = text("필터").findOne(3000) || text("Filter").findOne(3000);
+    const filterBtn = text("필터").findOne(3000) || text("Filter").findOne(3000);
     if (filterBtn) {
-        var bounds = filterBtn.bounds();
+        let bounds = filterBtn.bounds();
         HumanPatterns.naturalClick(bounds.centerX(), bounds.centerY(), bounds.width(), bounds.height());
         sleep(1500);
         
-        var hourOption = text("지난 1시간").findOne(2000) || text("Last hour").findOne(2000);
+        const hourOption = text("지난 1시간").findOne(2000) || text("Last hour").findOne(2000);
         if (hourOption) {
             bounds = hourOption.bounds();
             HumanPatterns.naturalClick(bounds.centerX(), bounds.centerY(), bounds.width(), bounds.height());
             sleep(1500);
             
-            var applyBtn = text("적용").findOne(2000) || text("Apply").findOne(2000);
+            const applyBtn = text("적용").findOne(2000) || text("Apply").findOne(2000);
             if (applyBtn) {
                 bounds = applyBtn.bounds();
                 HumanPatterns.naturalClick(bounds.centerX(), bounds.centerY(), bounds.width(), bounds.height());
@@ -314,20 +314,19 @@ function applyRecentFilter() {
 
 function scrollAndFindVideo(targetTitle, maxPages) {
     logStatus("영상 탐색 중: " + targetTitle);
-    var rank = 0;
+    let rank = 0;
     
-    for (var page = 0; page < maxPages; page++) {
-        var videos = className("android.view.ViewGroup").find();
+    for (let page = 0; page < maxPages; page++) {
+        const videos = className("android.view.ViewGroup").find();
         
-        for (var i = 0; i < videos.length; i++) {
+        for (const video of videos) {
             rank++;
-            var video = videos[i];
             
-            var titleNode = video.findOne(className("android.widget.TextView"));
+            const titleNode = video.findOne(className("android.widget.TextView"));
             if (titleNode) {
-                var title = titleNode.text();
+                const title = titleNode.text();
                 
-                if (title && targetTitle && title.indexOf(targetTitle) !== -1) {
+                if (title && targetTitle && title.includes(targetTitle)) {
                     logStatus("영상 발견! 순위: " + rank);
                     return { found: true, element: video, rank: rank };
                 }
@@ -351,11 +350,11 @@ function scrollAndFindVideo(targetTitle, maxPages) {
 
 function watchRandomVideo(videoElement) {
     try {
-        var bounds = videoElement.bounds();
+        const bounds = videoElement.bounds();
         HumanPatterns.naturalClick(bounds.centerX(), bounds.centerY(), bounds.width(), bounds.height());
         sleep(2000);
         
-        var watchTime = HumanPatterns.randomInt(5, 60);
+        const watchTime = HumanPatterns.randomInt(5, 60);
         logStatus("랜덤 시청: " + watchTime + "초");
         sleep(watchTime * 1000);
         
@@ -373,19 +372,20 @@ function openVideoByUrl(url) {
         sleep(3000);
         return true;
     } catch (e) {
+        log("URL 오류: " + e);
         return false;
     }
 }
 
 function findVideo(video) {
-    var result = { found: false, searchType: 0, rank: 0 };
+    let result = { found: false, searchType: 0, rank: 0 };
     
     // 2-1. 키워드 검색
     if (video.keyword) {
         logStatus("[1/4] 키워드 검색");
         if (openSearch() && searchQuery(video.keyword, false)) {
             sleep(2000);
-            var searchResult = scrollAndFindVideo(video.title, CONFIG.MAX_SCROLL_PAGES.KEYWORD);
+            const searchResult = scrollAndFindVideo(video.title, CONFIG.MAX_SCROLL_PAGES.KEYWORD);
             if (searchResult.found) {
                 return { found: true, searchType: SEARCH_TYPE.KEYWORD, rank: searchResult.rank, element: searchResult.element };
             }
@@ -399,7 +399,7 @@ function findVideo(video) {
         logStatus("[2/4] 최근 1시간 검색");
         if (openSearch() && searchQuery(video.keyword, true)) {
             sleep(2000);
-            var searchResult = scrollAndFindVideo(video.title, CONFIG.MAX_SCROLL_PAGES.RECENT);
+            const searchResult = scrollAndFindVideo(video.title, CONFIG.MAX_SCROLL_PAGES.RECENT);
             if (searchResult.found) {
                 return { found: true, searchType: SEARCH_TYPE.RECENT, rank: searchResult.rank, element: searchResult.element };
             }
@@ -413,7 +413,7 @@ function findVideo(video) {
         logStatus("[3/4] 제목 검색");
         if (openSearch() && searchQuery(video.title, false)) {
             sleep(2000);
-            var searchResult = scrollAndFindVideo(video.title, CONFIG.MAX_SCROLL_PAGES.TITLE);
+            const searchResult = scrollAndFindVideo(video.title, CONFIG.MAX_SCROLL_PAGES.TITLE);
             if (searchResult.found) {
                 return { found: true, searchType: SEARCH_TYPE.TITLE, rank: searchResult.rank, element: searchResult.element };
             }
@@ -437,40 +437,41 @@ function findVideo(video) {
 
 function getVideoDuration() {
     try {
-        var durationText = id("time").findOne(3000);
+        const durationText = id("time").findOne(3000);
         if (durationText) {
-            var text = durationText.text();
-            var parts = text.split("/");
+            const text = durationText.text();
+            const parts = text.split("/");
             if (parts.length >= 2) {
                 return parseTimeToSeconds(parts[1].trim());
             }
         }
         return 300;  // 기본값 5분
     } catch (e) {
+        log("영상 길이 파싱 오류: " + e);
         return 300;
     }
 }
 
 function parseTimeToSeconds(timeStr) {
-    var parts = timeStr.split(":").reverse();
-    var seconds = 0;
-    for (var i = 0; i < parts.length; i++) {
-        seconds += parseInt(parts[i]) * Math.pow(60, i);
+    const parts = timeStr.split(":").reverse();
+    let seconds = 0;
+    for (let i = 0; i < parts.length; i++) {
+        seconds += Number.parseInt(parts[i], 10) * Math.pow(60, i);
     }
     return seconds;
 }
 
 function watchVideoWithPattern(pattern) {
-    var watchTime = pattern.watch.watchTime;
-    var seekTimings = pattern.watch.seekTimings;
-    var interaction = pattern.interaction;
+    const watchTime = pattern.watch.watchTime;
+    const seekTimings = pattern.watch.seekTimings;
+    const interaction = pattern.interaction;
     
     logStatus("시청 시간: " + watchTime + "초 (" + pattern.watch.watchPercent + "%)");
     logStatus("Seek 횟수: " + pattern.watch.seekCount);
     
-    var elapsed = 0;
-    var seekIndex = 0;
-    var likedDone = false;
+    let elapsed = 0;
+    let seekIndex = 0;
+    let likedDone = false;
     
     while (elapsed < watchTime && isRunning) {
         // Seek 실행
@@ -504,8 +505,8 @@ function watchVideoWithPattern(pattern) {
 
 function performSeek() {
     // 화면 오른쪽 더블 탭 (앞으로 10초)
-    var x = Math.floor(CONFIG.SCREEN_WIDTH * 0.75);
-    var y = Math.floor(CONFIG.SCREEN_HEIGHT * 0.4);
+    const x = Math.floor(CONFIG.SCREEN_WIDTH * 0.75);
+    const y = Math.floor(CONFIG.SCREEN_HEIGHT * 0.4);
     
     HumanPatterns.naturalDoubleTap(x, y, 200, 400);
     sleep(500);
@@ -518,12 +519,12 @@ function performLike() {
     HumanPatterns.naturalClick(CONFIG.SCREEN_WIDTH / 2, CONFIG.SCREEN_HEIGHT / 2, 200, 200);
     sleep(500);
     
-    var likeBtn = desc("좋아요").findOne(3000) || 
+    const likeBtn = desc("좋아요").findOne(3000) || 
                   desc("like").findOne(3000) ||
                   id("like_button").findOne(3000);
     
     if (likeBtn) {
-        var bounds = likeBtn.bounds();
+        const bounds = likeBtn.bounds();
         HumanPatterns.naturalClick(bounds.centerX(), bounds.centerY(), bounds.width(), bounds.height());
         sleep(1000);
         logStatus("좋아요 완료");
@@ -538,20 +539,20 @@ function performComment(commentText) {
     HumanPatterns.naturalScrollDown(CONFIG.SCREEN_WIDTH, CONFIG.SCREEN_HEIGHT);
     sleep(1500);
     
-    var commentBox = text("공개 댓글 추가...").findOne(3000) || 
+    const commentBox = text("공개 댓글 추가...").findOne(3000) || 
                      text("Add a public comment...").findOne(3000);
     
     if (commentBox) {
-        var bounds = commentBox.bounds();
+        let bounds = commentBox.bounds();
         HumanPatterns.naturalClick(bounds.centerX(), bounds.centerY(), bounds.width(), bounds.height());
         sleep(1000);
         
-        var input = className("android.widget.EditText").findOne(3000);
+        const input = className("android.widget.EditText").findOne(3000);
         if (input) {
             HumanPatterns.naturalTyping(input, commentText);
             sleep(500);
             
-            var postBtn = desc("댓글").findOne(2000) || id("send_button").findOne(2000);
+            const postBtn = desc("댓글").findOne(2000) || id("send_button").findOne(2000);
             if (postBtn) {
                 bounds = postBtn.bounds();
                 HumanPatterns.naturalClick(bounds.centerX(), bounds.centerY(), bounds.width(), bounds.height());
@@ -568,7 +569,7 @@ function performComment(commentText) {
 
 function processVideo(video) {
     currentVideo = video;
-    var result = {
+    const result = {
         videoId: video.id,
         title: video.title,
         watchTime: 0,
@@ -589,7 +590,7 @@ function processVideo(video) {
             throw new Error("YouTube 실행 실패");
         }
         
-        var findResult = findVideo(video);
+        const findResult = findVideo(video);
         if (!findResult.found) {
             throw new Error("영상을 찾을 수 없음");
         }
@@ -598,20 +599,20 @@ function processVideo(video) {
         result.searchRank = findResult.rank;
         
         if (findResult.element) {
-            var bounds = findResult.element.bounds();
+            const bounds = findResult.element.bounds();
             HumanPatterns.naturalClick(bounds.centerX(), bounds.centerY(), bounds.width(), bounds.height());
             sleep(3000);
         }
         
         // 영상 길이 확인
-        var duration = getVideoDuration();
+        const duration = getVideoDuration();
         result.totalDuration = duration;
         
         // 휴먼 패턴 생성
-        var pattern = HumanPatterns.generateHumanPattern(duration);
+        let pattern = HumanPatterns.generateHumanPattern(duration);
         
         // 댓글 템플릿 업데이트
-        var templates = ui.commentTemplates.getText().split("|");
+        const templates = ui.commentTemplates.getText().split("|");
         if (templates.length > 0) {
             HumanPatterns.InteractionConfig.commentTemplates = templates;
             pattern = HumanPatterns.generateHumanPattern(duration);
@@ -652,8 +653,8 @@ function mainLoop() {
     logStatus("🚀 자동화 시작");
     
     while (isRunning) {
-        var pendingVideos = videoQueue.filter(function(v) {
-            return completedVideos.indexOf(v.id) === -1;
+        let pendingVideos = videoQueue.filter(function(v) {
+            return !completedVideos.includes(v.id);
         });
         
         if (pendingVideos.length === 0) {
@@ -666,7 +667,7 @@ function mainLoop() {
             }
             
             pendingVideos = videoQueue.filter(function(v) {
-                return completedVideos.indexOf(v.id) === -1;
+                return !completedVideos.includes(v.id);
             });
             
             if (pendingVideos.length === 0) {
@@ -676,13 +677,13 @@ function mainLoop() {
         }
         
         // 완전 랜덤 선택
-        var randomIndex = HumanPatterns.randomInt(0, pendingVideos.length - 1);
-        var selectedVideo = pendingVideos[randomIndex];
+        const randomIndex = HumanPatterns.randomInt(0, pendingVideos.length - 1);
+        const selectedVideo = pendingVideos[randomIndex];
         
         logStatus("🎬 선택: " + selectedVideo.title);
         processVideo(selectedVideo);
         
-        var waitTime = HumanPatterns.randomInt(5, 15);
+        const waitTime = HumanPatterns.randomInt(5, 15);
         logStatus("⏳ " + waitTime + "초 후 다음 영상...");
         sleep(waitTime * 1000);
     }
@@ -703,16 +704,16 @@ ui.btnFetch.click(function() {
 });
 
 ui.btnAddManual.click(function() {
-    var keyword = ui.inputKeyword.getText();
-    var title = ui.inputTitle.getText();
-    var url = ui.inputUrl.getText();
+    const keyword = ui.inputKeyword.getText();
+    const title = ui.inputTitle.getText();
+    const url = ui.inputUrl.getText();
     
     if (!keyword && !title && !url) {
         toast("최소 하나의 정보를 입력해주세요");
         return;
     }
     
-    var video = {
+    const video = {
         id: "manual_" + Date.now(),
         keyword: keyword || "",
         title: title || "",
@@ -729,10 +730,10 @@ ui.btnAddManual.click(function() {
 });
 
 ui.btnPreview.click(function() {
-    var duration = parseInt(ui.previewDuration.getText()) || 300;
-    var pattern = HumanPatterns.generateHumanPattern(duration);
+    const duration = Number.parseInt(ui.previewDuration.getText(), 10) || 300;
+    const pattern = HumanPatterns.generateHumanPattern(duration);
     
-    var preview = "=== 휴먼 패턴 미리보기 ===\n";
+    let preview = "=== 휴먼 패턴 미리보기 ===\n";
     preview += "📺 시청: " + pattern.watch.watchTime + "초 (" + pattern.watch.watchPercent + "%)\n";
     preview += "⏩ Seek: " + pattern.watch.seekCount + "회\n";
     preview += "👍 좋아요: " + (pattern.interaction.shouldLike ? "Yes @ " + pattern.interaction.likeTiming + "초" : "No") + "\n";
@@ -782,4 +783,3 @@ setInterval(function() {}, 1000);
 
 logStatus("✨ 준비 완료. 영상을 추가하고 시작하세요.");
 updateStats();
-

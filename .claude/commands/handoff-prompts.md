@@ -9,7 +9,7 @@
 
 ### 동시 실행 가능 그룹
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    WAVE 1 (동시 시작 가능)                    │
 │                                                              │
@@ -102,9 +102,11 @@ this.deviceId = config?.device?.id || device?.serial || 'unknown-device';
 ```
 
 ### 2. api.js 기본 설정 수정
+
 파일: `/autox-scripts/modules/api.js`
 
 수정 사항:
+
 - timeout 기본값 설정
 - config 널 체크 추가
 
@@ -114,24 +116,32 @@ this.timeout = config.settings.timeout;
 
 // 수정 후
 this.timeout = config?.settings?.timeout || 30000;
-```
+
+
 
 ⚠️ 중요: api.js에 새 함수 추가는 PR-05에서 수행. 여기서는 기존 코드 안정화만.
 
 ### 3. validation.js 완성
+
 파일: `/autox-scripts/persona-automation/modules/validation.js`
 
 추가할 검증 규칙:
+
 - variables.behavior 필수 필드 체크
 - probability 값 범위 검증 (0.0 ~ 1.0)
+
 - timing 값 양수 검증
 
 ## 완료 기준
+
 - [ ] logger.js에서 config undefined 시 크래시 없음
 - [ ] api.js에서 timeout 기본값 동작
+
 - [ ] validation.js에서 잘못된 설정값 감지 및 수정
 
+
 ## 브랜치
+
 `feature/pr-01-foundation`
 
 ## 커밋 메시지 형식

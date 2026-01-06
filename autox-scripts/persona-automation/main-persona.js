@@ -60,8 +60,8 @@ try {
         config.persona = { ...config.persona, ...variables.persona };
         config.exploration = variables.exploration;
         
-    } catch (varErr) {
-        console.error('변수 파일 로드 실패, 기본값 사용:', varErr.message);
+    } catch (error_) {
+        console.error('변수 파일 로드 실패, 기본값 사용:', error_.message);
         // variables.json 없어도 계속 진행 (persona.json의 기본값 사용)
     }
     
@@ -266,16 +266,6 @@ async function executeCommand(video) {
     
     try {
         // 1. YouTube 앱 실행 (재시도 3회)
-        const launchSuccess = await errorHandler.withRetry(
-            () => {
-                if (!youtube.launchYouTube()) {
-                    throw new Error('YouTube 앱 실행 실패');
-                }
-                return true;
-            },
-            3,
-            2000
-        );
         
         // 2. URL 열기
         if (!youtube.openByUrl(video.url)) {
@@ -423,7 +413,7 @@ async function randomSleep() {
 // ==================== 실행 ====================
 
 try {
-    mainLoop();
+    await mainLoop();
 } catch (e) {
     logger.error('❌ 치명적 에러', { error: e.message, stack: e.stack });
 }
