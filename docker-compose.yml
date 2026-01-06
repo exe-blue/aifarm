@@ -74,6 +74,55 @@ services:
       - doai-gateway
 
   # ============================================
+  # Orchestrator (The Brain)
+  # ============================================
+  # 역할: 600대 노드 총괄 제어
+  # - WSS 서버: NodeRunner 연결 관리
+  # - Activity #4: Open Injection API
+  # - Activity #1: CCTV Grid API
+  doai-orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    container_name: doai-orchestrator
+    restart: unless-stopped
+    ports:
+      - "8443:8443"
+    environment:
+      - LOG_LEVEL=INFO
+      - SUPABASE_URL=${DOAI_ME_SUPABASE_URL}
+      - SUPABASE_KEY=${DOAI_ME_SUPABASE_KEY}
+    volumes:
+      - ./orchestrator:/app
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - doai-net
+
+  # ============================================
+  # VIP Channel Service (Activity #2)
+  # ============================================
+  # 역할: VIP 채널 새 영상 감지 → 자동 시청
+  doai-vip-channel:
+    build:
+      context: ./services/vip-channel
+      dockerfile: Dockerfile
+    container_name: doai-vip-channel
+    restart: unless-stopped
+    ports:
+      - "8007:8007"
+    environment:
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+      - ORCHESTRATOR_URL=http://doai-orchestrator:8443
+      - POLL_INTERVAL=60
+      - LOG_LEVEL=INFO
+    volumes:
+      - vip_channel_data:/app/data
+    networks:
+      - doai-net
+    depends_on:
+      - doai-orchestrator
+
+  # ============================================
   # n8n Workflow Automation
   # ============================================
   # 역할: 오케스트레이션 (두뇌)
@@ -122,3 +171,5 @@ networks:
 volumes:
   doai_n8n_data:
     name: doai-n8n-data
+  vip_channel_data:
+    name: doai-vip-channel-data

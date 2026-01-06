@@ -6,34 +6,47 @@ VIP 채널 새 영상 감지 → 600대 노드 0순위 시청
 "왕좌(Throne)는 비어 있습니다. 선택된 채널만이 이들의 충성심을 독점합니다."
 
 @author Axon (Builder)
-@version 1.0.0
+@version 1.1.0 (Production)
 """
 
 import asyncio
 import time
 import logging
 import os
+import json
 from typing import Dict, List, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import httpx
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+# ==================== 환경 변수 로드 ====================
+from dotenv import load_dotenv
+load_dotenv()
+
 # ==================== 로깅 ====================
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] [%(levelname)s] %(message)s',
+    level=getattr(logging, LOG_LEVEL),
+    format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("vip-channel")
 
 # ==================== 설정 ====================
 YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY', '')
 ORCHESTRATOR_URL = os.getenv('ORCHESTRATOR_URL', 'http://localhost:8443')
-POLL_INTERVAL = int(os.getenv('POLL_INTERVAL', '60'))  # 초
+POLL_INTERVAL = int(os.getenv('POLL_INTERVAL', '60'))
+PORT = int(os.getenv('PORT', '8007'))
+DATA_DIR = Path(os.getenv('DATA_DIR', './data'))
+
+# 데이터 디렉토리 생성
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # ==================== 데이터 모델 ====================
 
@@ -70,14 +83,39 @@ class ChannelResponse(BaseModel):
 # ==================== 상태 저장소 ====================
 
 class VIPChannelStore:
-    """VIP 채널 저장소 (In-Memory)"""
+    """VIP 채널 저장소 (파일 기반 영구 저장)"""
 
-    def __init__(self):
+    def __init__(self, data_file: Path = DATA_DIR / "vip_channels.json"):
+        self.data_file = data_file
         self.channels: Dict[str, VIPChannel] = {}
+        self._load()
+
+    def _load(self):
+        """파일에서 데이터 로드"""
+        if self.data_file.exists():
+            try:
+                with open(self.data_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    for item in data:
+                        channel = VIPChannel(**item)
+                        self.channels[channel.channel_id] = channel
+                logger.info(f"📂 {len(self.channels)}개 VIP 채널 로드됨")
+            except Exception as e:
+                logger.error(f"데이터 로드 실패: {e}")
+
+    def _save(self):
+        """파일에 데이터 저장"""
+        try:
+            data = [asdict(c) for c in self.channels.values()]
+            with open(self.data_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"데이터 저장 실패: {e}")
 
     def add(self, channel: VIPChannel) -> VIPChannel:
         """채널 추가"""
         self.channels[channel.channel_id] = channel
+        self._save()
         return channel
 
     def get(self, channel_id: str) -> Optional[VIPChannel]:
@@ -99,6 +137,7 @@ class VIPChannelStore:
         """채널 삭제"""
         if channel_id in self.channels:
             del self.channels[channel_id]
+            self._save()
             return True
         return False
 
@@ -107,11 +146,13 @@ class VIPChannelStore:
         if channel_id in self.channels:
             self.channels[channel_id].last_video_id = video_id
             self.channels[channel_id].last_checked = time.time()
+            self._save()
 
     def increment_injection(self, channel_id: str):
         """Injection 카운트 증가"""
         if channel_id in self.channels:
             self.channels[channel_id].total_injections += 1
+            self._save()
 
 
 store = VIPChannelStore()
@@ -120,49 +161,95 @@ store = VIPChannelStore()
 # ==================== YouTube API ====================
 
 class YouTubeAPI:
-    """YouTube Data API v3 클라이언트"""
+    """YouTube Data API v3 클라이언트 (프로덕션)"""
 
     BASE_URL = "https://www.googleapis.com/youtube/v3"
 
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client: Optional[httpx.AsyncClient] = None
+        self._quota_used = 0
+        self._quota_reset_time = time.time()
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """HTTP 클라이언트 (lazy init)"""
+        if self.client is None:
+            self.client = httpx.AsyncClient(
+                timeout=30.0,
+                headers={"Accept": "application/json"}
+            )
+        return self.client
+
+    def _check_quota(self):
+        """일일 할당량 체크 (YouTube API: 10,000 units/day)"""
+        # 24시간마다 리셋
+        if time.time() - self._quota_reset_time > 86400:
+            self._quota_used = 0
+            self._quota_reset_time = time.time()
+
+        # search API는 100 units, channels API는 1 unit
+        if self._quota_used > 9000:
+            logger.warning(f"⚠️ YouTube API 할당량 경고: {self._quota_used}/10000")
 
     async def get_channel_info(self, channel_id: str) -> Optional[dict]:
-        """채널 정보 조회"""
+        """채널 정보 조회 (1 unit)"""
         if not self.api_key:
-            # API 키 없을 시 Mock
+            logger.warning("YouTube API 키가 설정되지 않음 - Mock 모드")
             return {"title": f"Channel {channel_id[:8]}..."}
 
+        self._check_quota()
+
         try:
-            response = await self.client.get(
+            client = await self._get_client()
+            response = await client.get(
                 f"{self.BASE_URL}/channels",
                 params={
                     "key": self.api_key,
                     "id": channel_id,
-                    "part": "snippet"
+                    "part": "snippet,statistics"
                 }
             )
+            self._quota_used += 1
+
+            if response.status_code == 403:
+                logger.error("❌ YouTube API 할당량 초과 또는 권한 오류")
+                return None
+
             data = response.json()
+
+            if data.get("error"):
+                logger.error(f"YouTube API 에러: {data['error'].get('message')}")
+                return None
+
             if data.get("items"):
-                return data["items"][0]["snippet"]
+                snippet = data["items"][0]["snippet"]
+                stats = data["items"][0].get("statistics", {})
+                return {
+                    "title": snippet.get("title"),
+                    "description": snippet.get("description", "")[:200],
+                    "thumbnail": snippet.get("thumbnails", {}).get("default", {}).get("url"),
+                    "subscriber_count": stats.get("subscriberCount", "0"),
+                    "video_count": stats.get("videoCount", "0")
+                }
+        except httpx.TimeoutException:
+            logger.error(f"채널 정보 조회 타임아웃: {channel_id}")
         except Exception as e:
             logger.error(f"채널 정보 조회 실패: {e}")
         return None
 
     async def get_latest_video(self, channel_id: str) -> Optional[dict]:
-        """채널의 최신 영상 조회"""
+        """채널의 최신 영상 조회 (100 units)"""
         if not self.api_key:
-            # API 키 없을 시 Mock (시연용)
-            return {
-                "video_id": f"mock-{int(time.time())}",
-                "title": "Mock Video for Demo",
-                "published_at": datetime.now().isoformat()
-            }
+            # API 키 없을 시 Mock (시연용) - 실제 Injection은 발생하지 않음
+            return None
+
+        self._check_quota()
 
         try:
-            # 채널의 업로드 플레이리스트 조회
-            response = await self.client.get(
+            client = await self._get_client()
+
+            # search API 사용 (100 units)
+            response = await client.get(
                 f"{self.BASE_URL}/search",
                 params={
                     "key": self.api_key,
@@ -170,20 +257,44 @@ class YouTubeAPI:
                     "part": "snippet",
                     "order": "date",
                     "maxResults": 1,
-                    "type": "video"
+                    "type": "video",
+                    "publishedAfter": (datetime.utcnow() - timedelta(days=7)).isoformat() + "Z"
                 }
             )
+            self._quota_used += 100
+
+            if response.status_code == 403:
+                logger.error("❌ YouTube API 할당량 초과")
+                return None
+
             data = response.json()
+
+            if data.get("error"):
+                logger.error(f"YouTube API 에러: {data['error'].get('message')}")
+                return None
+
             if data.get("items"):
                 item = data["items"][0]
                 return {
                     "video_id": item["id"]["videoId"],
                     "title": item["snippet"]["title"],
-                    "published_at": item["snippet"]["publishedAt"]
+                    "published_at": item["snippet"]["publishedAt"],
+                    "thumbnail": item["snippet"]["thumbnails"]["default"]["url"]
                 }
+
+            logger.debug(f"채널 {channel_id}: 최근 7일 내 새 영상 없음")
+            return None
+
+        except httpx.TimeoutException:
+            logger.error(f"최신 영상 조회 타임아웃: {channel_id}")
         except Exception as e:
             logger.error(f"최신 영상 조회 실패: {e}")
         return None
+
+    async def close(self):
+        """클라이언트 종료"""
+        if self.client:
+            await self.client.aclose()
 
 
 youtube = YouTubeAPI(YOUTUBE_API_KEY)
