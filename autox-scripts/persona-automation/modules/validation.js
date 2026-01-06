@@ -116,12 +116,58 @@ class Validator {
         if (!serial || typeof serial !== 'string') {
             return { valid: false, error: 'Device serial is invalid' };
         }
-        
+
         if (serial.length < 3 || serial.length > 50) {
             return { valid: false, error: 'Device serial length must be 3-50' };
         }
-        
+
         return { valid: true };
+    }
+
+    /**
+     * 설정 검증 (PR-01 Foundation)
+     * probability 범위와 timing 값 양수 검증
+     */
+    static validateConfig(config) {
+        const errors = [];
+
+        // behavior 필수 필드 체크
+        if (config?.behavior) {
+            const { likeProbability, commentProbability } = config.behavior;
+
+            // probability 값 범위 검증 (0.0 ~ 1.0)
+            if (likeProbability !== undefined) {
+                if (typeof likeProbability !== 'number' || likeProbability < 0 || likeProbability > 1) {
+                    errors.push('likeProbability must be between 0 and 1');
+                }
+            }
+
+            if (commentProbability !== undefined) {
+                if (typeof commentProbability !== 'number' || commentProbability < 0 || commentProbability > 1) {
+                    errors.push('commentProbability must be between 0 and 1');
+                }
+            }
+        }
+
+        // timing 값 양수 검증
+        if (config?.timing) {
+            const { minWatchDuration, maxWatchDuration, delayBetweenVideos } = config.timing;
+
+            if (minWatchDuration !== undefined && minWatchDuration <= 0) {
+                errors.push('minWatchDuration must be positive');
+            }
+            if (maxWatchDuration !== undefined && maxWatchDuration <= 0) {
+                errors.push('maxWatchDuration must be positive');
+            }
+            if (delayBetweenVideos !== undefined && delayBetweenVideos < 0) {
+                errors.push('delayBetweenVideos must be non-negative');
+            }
+        }
+
+        return {
+            valid: errors.length === 0,
+            errors
+        };
     }
 }
 

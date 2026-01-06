@@ -5,9 +5,10 @@
 
 class API {
     constructor(config, logger) {
-        this.baseUrl = `${config.server.protocol}://${config.server.host}:${config.server.port}`;
-        this.deviceId = config.device.id;
-        this.timeout = config.settings.timeout;
+        // config undefined 방어 처리
+        this.baseUrl = `${config?.server?.protocol || 'http'}://${config?.server?.host || 'localhost'}:${config?.server?.port || 3000}`;
+        this.deviceId = config?.device?.id || device?.serial || 'unknown-device';
+        this.timeout = config?.settings?.timeout || 30000;
         this.logger = logger;
     }
 

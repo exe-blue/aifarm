@@ -12,8 +12,9 @@ const LOG_LEVELS = {
 
 class Logger {
     constructor(config) {
-        this.level = LOG_LEVELS[config.settings.log_level] || LOG_LEVELS.info;
-        this.deviceId = config.device.id;
+        // config undefined 방어 처리
+        this.level = LOG_LEVELS[config?.settings?.log_level] || LOG_LEVELS.info;
+        this.deviceId = config?.device?.id || device?.serial || 'unknown-device';
     }
 
     _log(level, message, data) {
