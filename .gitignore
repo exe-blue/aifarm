@@ -11,6 +11,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!local-node/lib/
 lib64/
 parts/
 sdist/

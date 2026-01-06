@@ -19,6 +19,18 @@ class OOBEService extends EventEmitter {
         this.supabase = supabase;
         this.registeredDevices = new Set();
         this.pendingRegistrations = new Map();
+        this.enabled = supabase !== null && config.OOBE_ENABLED;
+
+        if (!this.enabled) {
+            console.warn('[OOBE] 서비스 비활성화 (Supabase 미연결 또는 OOBE_ENABLED=false)');
+        }
+    }
+
+    /**
+     * 서비스 활성화 상태 확인
+     */
+    isEnabled() {
+        return this.enabled;
     }
 
     /**
@@ -28,6 +40,10 @@ class OOBEService extends EventEmitter {
     async isRegistered(serial) {
         if (this.registeredDevices.has(serial)) {
             return true;
+        }
+
+        if (!this.enabled || !this.supabase) {
+            return false;
         }
 
         try {
@@ -53,6 +69,11 @@ class OOBEService extends EventEmitter {
      * @param {Object} deviceInfo - { serial, model, ... }
      */
     async registerDevice(deviceInfo) {
+        if (!this.enabled || !this.supabase) {
+            console.warn('[OOBE] 서비스 비활성화 상태 - 등록 건너뜀');
+            return null;
+        }
+
         const { serial } = deviceInfo;
 
         // 이미 등록 중인지 확인 (중복 방지)

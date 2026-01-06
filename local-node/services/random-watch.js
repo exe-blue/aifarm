@@ -20,6 +20,18 @@ class RandomWatchService extends EventEmitter {
         this.supabase = supabase;
         this.laixi = laixi;
         this.activeWatches = new Map(); // serial -> { videoId, startTime }
+        this.enabled = supabase !== null;
+
+        if (!this.enabled) {
+            console.warn('[RandomWatch] 서비스 비활성화 (Supabase 미연결)');
+        }
+    }
+
+    /**
+     * 서비스 활성화 상태 확인
+     */
+    isEnabled() {
+        return this.enabled;
     }
 
     /**
@@ -28,6 +40,10 @@ class RandomWatchService extends EventEmitter {
      * @param {Object} persona - Persona 정보 (취향 반영)
      */
     async startRandomWatch(serial, persona = null) {
+        if (!this.enabled) {
+            return null;
+        }
+
         if (this.activeWatches.has(serial)) {
             console.log(`[RandomWatch] ${serial} 이미 시청 중`);
             return null;
@@ -123,6 +139,11 @@ class RandomWatchService extends EventEmitter {
      * 시청 결과 보고 (Supabase)
      */
     async _reportWatchResult(result) {
+        if (!this.supabase) {
+            console.log('[RandomWatch] Supabase 미연결 - 결과 보고 건너뜀');
+            return false;
+        }
+
         try {
             // traces 테이블에 기록
             const { error } = await this.supabase
@@ -159,6 +180,10 @@ class RandomWatchService extends EventEmitter {
      * 랜덤 영상 선택
      */
     async _selectRandomVideo(persona = null) {
+        if (!this.supabase) {
+            return this._getDefaultVideo();
+        }
+
         try {
             // 1. 추천 영상 풀에서 선택 시도
             const { data: videos, error } = await this.supabase

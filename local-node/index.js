@@ -102,7 +102,7 @@ async function processDevice(device) {
         const finalScript = envInjection + "\n" + scriptTemplate;
 
         // 5. Run Script
-        const success = await Laixi.runScript(serial, finalScript);
+        const success = await laixi.runScript(serial, finalScript);
         
         if (success) {
             DeviceState.set(serial, { taskId: task.id, startTime: Date.now() });
