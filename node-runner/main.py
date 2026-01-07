@@ -88,17 +88,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# SECRET_KEY 필수 검증
-if not Config.SECRET_KEY:
-    logger.error("NODE_SECRET_KEY is required. Please set the environment variable.")
-    sys.exit(1)
-
-# SECRET_KEY Base64 형식 검증
-try:
-    base64.b64decode(Config.SECRET_KEY)
-except Exception as e:
-    logger.error(f"NODE_SECRET_KEY must be valid Base64 format: {e}")
-    sys.exit(1)
+# SECRET_KEY 필수 검증 (--no-sign 옵션이 없는 경우에만)
+if "--no-sign" not in sys.argv:
+    if not Config.SECRET_KEY:
+        logger.error("NODE_SECRET_KEY is required. Please set the environment variable.")
+        sys.exit(1)
+    
+    # SECRET_KEY Base64 형식 검증
+    try:
+        base64.b64decode(Config.SECRET_KEY)
+    except Exception as e:
+        logger.error(f"NODE_SECRET_KEY must be valid Base64 format: {e}")
+        sys.exit(1)
+else:
+    logger.info("🔓 --no-sign 모드: SECRET_KEY 검증 건너뜀")
 
 
 # ============================================================
@@ -301,18 +304,43 @@ class LaixiClient:
     
     async def _sync_devices(self):
         """디바이스 목록 동기화"""
-        response = await self.send_command({"action": "List"})
+        response = await self.send_command({"action": "list"})  # 소문자 'list'
+        logger.debug(f"Laixi list 응답: {response}")
+        
         if response and response.get("StatusCode") == 200:
-            raw_devices = response.get("devices", [])
+            # Laixi 응답: result가 JSON 문자열로 감싸져 있음
+            result = response.get("result", "[]")
+            logger.debug(f"result 원본: {result}, type: {type(result)}")
+            
+            if isinstance(result, str):
+                try:
+                    raw_devices = json.loads(result)
+                except json.JSONDecodeError:
+                    raw_devices = []
+            else:
+                raw_devices = result
+            
+            logger.debug(f"raw_devices: {raw_devices}, type: {type(raw_devices)}")
+            
+            # 배열이면 그대로, 딕셔너리면 키(디바이스 ID)를 리스트로 변환
+            if isinstance(raw_devices, dict):
+                device_list = list(raw_devices.keys())
+            elif isinstance(raw_devices, list):
+                device_list = raw_devices
+            else:
+                device_list = []
+            
+            # 디바이스 목록 변환
             self._devices = [
                 {
                     "slot": i + 1,
-                    "serial": d.get("serial", f"SLOT_{i+1}"),
-                    "status": "idle" if d.get("connected", False) else "disconnected",
-                    "battery_level": d.get("battery", None)
+                    "serial": d if isinstance(d, str) else str(d),
+                    "status": "idle",
+                    "battery_level": None
                 }
-                for i, d in enumerate(raw_devices)
+                for i, d in enumerate(device_list)
             ]
+            logger.info(f"디바이스 동기화 완료: {len(self._devices)}대 - {[d['serial'] for d in self._devices]}")
     
     async def send_command(self, command: dict, timeout: float = 10.0) -> Optional[dict]:
         """Laixi에 명령 전송"""
