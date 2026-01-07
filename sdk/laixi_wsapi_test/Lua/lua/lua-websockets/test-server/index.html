@@ -332,15 +332,14 @@ function reset() {
 	canvas.addEventListener('mousedown', ev_mousedown, false);
 	canvas.addEventListener('mouseup', ev_mouseup, false);
 
-	let offsetX = 0, offsetY = 0;
-	let element = canvas;
+	var offsetX = 0, offsetY = 0;
+	var element = canvas;
       if (element.offsetParent) {
         do {
           offsetX += element.offsetLeft;
           offsetY += element.offsetTop;
         } while ((element = element.offsetParent));
-      }
- 
+      } 
 function update_color() {
 	color = document.getElementById("color").value;
 }
