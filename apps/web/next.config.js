@@ -1,5 +1,11 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  webpack: (config) => {
+    config.resolve.alias['@'] = path.resolve(__dirname);
+    return config;
+  },
   reactStrictMode: true,
   
   // TypeScript/ESLint 빌드 에러 무시 (배포 우선)
