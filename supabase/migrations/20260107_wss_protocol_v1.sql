@@ -401,9 +401,9 @@ $$ LANGUAGE plpgsql;
 -- ═══════════════════════════════════════════════════════════════════════════
 
 CREATE OR REPLACE FUNCTION disconnect_node(p_node_id UUID)
-RETURNS BOOLEAN AS $$
+RETURNS BOOLEAN AS $
 DECLARE
-    node_rows INTEGER;
+    v_node_found BOOLEAN;
 BEGIN
     -- 노드 상태 업데이트
     UPDATE nodes
@@ -412,8 +412,7 @@ BEGIN
         ws_session_id = NULL
     WHERE id = p_node_id;
     
-    -- 노드 업데이트 영향 행 수 캡처
-    GET DIAGNOSTICS node_rows = ROW_COUNT;
+    v_node_found := FOUND;
     
     -- 할당된 명령 다시 PENDING으로
     UPDATE command_queue
@@ -423,6 +422,10 @@ BEGIN
         assigned_at = NULL
     WHERE assigned_node_id = p_node_id
       AND status IN ('ASSIGNED');
+    
+    RETURN v_node_found;
+END;
+$ LANGUAGE plpgsql;      AND status IN ('ASSIGNED');
     
     -- 노드가 존재하고 업데이트되었는지 반환
     RETURN (node_rows > 0);
