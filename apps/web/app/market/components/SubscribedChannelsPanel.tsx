@@ -361,6 +361,10 @@ function ChannelCard({
 }: ChannelCardProps) {
   const [targetViews, setTargetViews] = useState(channel.target_views_default);
 
+  // prop 변경 시 로컬 상태 동기화
+  useEffect(() => {
+    setTargetViews(channel.target_views_default);
+  }, [channel.target_views_default]);
   return (
     <div
       className={`rounded-lg p-3 transition-colors ${

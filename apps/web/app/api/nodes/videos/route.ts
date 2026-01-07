@@ -108,6 +108,14 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        const targetViews = video.targetViews || 400;
+        if (targetViews <= 0) {
+          return NextResponse.json(
+            { success: false, error: 'targetViews must be greater than 0' },
+            { status: 400 }
+          );
+        }
+
         const newVideo: QueuedVideo = {
           id: video.id || `video_${Date.now()}`,
           title: video.title,
@@ -117,11 +125,10 @@ export async function POST(request: NextRequest) {
           status: 'queued',
           assignedNodes: [],
           progress: 0,
-          targetViews: video.targetViews || 400,
+          targetViews,
           currentViews: 0,
           errorCount: 0,
         };
-
         videoQueue.set(newVideo.id, newVideo);
 
         return NextResponse.json({
@@ -150,10 +157,12 @@ export async function POST(request: NextRequest) {
         if (body.status) existingVideo.status = body.status;
         if (body.currentViews !== undefined) {
           existingVideo.currentViews = body.currentViews;
-          existingVideo.progress = (existingVideo.currentViews / existingVideo.targetViews) * 100;
+          existingVideo.progress = existingVideo.targetViews > 0 
+            ? (existingVideo.currentViews / existingVideo.targetViews) * 100 
+            : 0;
         }
         if (body.assignedNodes) {
-          existingVideo.assignedNodes = [...new Set([...existingVideo.assignedNodes, ...body.assignedNodes])];
+          existingVideo.assignedNodes = Array.from(new Set([...existingVideo.assignedNodes, ...body.assignedNodes]));
         }
         if (body.errorCount !== undefined) {
           existingVideo.errorCount = body.errorCount;
@@ -183,19 +192,15 @@ export async function POST(request: NextRequest) {
             { status: 404 }
           );
         }
-
-        const { nodeId, viewsAdded, isError } = body;
-        
-        if (nodeId) {
-          existingVideo.assignedNodes = [...new Set([...existingVideo.assignedNodes, nodeId])];
-        }
-        
+        const { viewsAdded, isError } = body;
         if (viewsAdded) {
           existingVideo.currentViews = Math.min(
             existingVideo.targetViews,
             existingVideo.currentViews + viewsAdded
           );
-          existingVideo.progress = (existingVideo.currentViews / existingVideo.targetViews) * 100;
+          existingVideo.progress = existingVideo.targetViews > 0
+            ? (existingVideo.currentViews / existingVideo.targetViews) * 100
+            : 0;
         }
 
         if (isError) {

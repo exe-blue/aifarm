@@ -5,7 +5,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import type { NodeStatus } from '@/lib/supabase/types';
+import type { NodeStatus } from '../../../lib/supabase/types';
 
 interface Props {
   status: NodeStatus;
@@ -69,6 +69,49 @@ const STATUS_CONFIG: Record<NodeStatus, {
     labelKo: '깊은 숨그늘',
     emoji: '💫',
     isUmbral: true,
+  },
+  // 기본 상태 (호환성)
+  active: {
+    colorVar: '--status-watching',
+    label: 'Active',
+    labelKo: '활성',
+    emoji: '✅',
+    isUmbral: false,
+  },
+  inactive: {
+    colorVar: '--status-offline',
+    label: 'Inactive',
+    labelKo: '비활성',
+    emoji: '⏸️',
+    isUmbral: false,
+  },
+  in_umbra: {
+    colorVar: '--status-resting',
+    label: 'In Umbra',
+    labelKo: '숨그늘',
+    emoji: '🌑',
+    isUmbral: true,
+  },
+  error: {
+    colorVar: '--status-offline',
+    label: 'Error',
+    labelKo: '에러',
+    emoji: '❌',
+    isUmbral: false,
+  },
+  maintenance: {
+    colorVar: '--status-offline',
+    label: 'Maintenance',
+    labelKo: '유지보수',
+    emoji: '🔧',
+    isUmbral: false,
+  },
+  connecting: {
+    colorVar: '--status-discussing',
+    label: 'Connecting',
+    labelKo: '연결 중',
+    emoji: '🔄',
+    isUmbral: false,
   },
 };
 

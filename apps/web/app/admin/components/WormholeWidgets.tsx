@@ -5,13 +5,13 @@
 
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '../../../lib/supabase/client';
 import type { 
   WormholeStats, 
   WormholeTopContext, 
   WormholeTypeStats,
   WormholeScoreHistogram,
-} from '@/lib/supabase/types';
+} from '../../../lib/supabase/types';
 
 // ============================================
 // Widget 1: 탐지량 (Volume)
@@ -189,7 +189,7 @@ export function WormholeTopContextWidget({ onContextClick }: TopContextWidgetPro
                   {ctx.event_count}
                 </div>
                 <div className="text-neutral-600 text-xs">
-                  {(ctx.avg_score * 100).toFixed(0)}%
+                  {((ctx.avg_score ?? 0) * 100).toFixed(0)}%
                 </div>
               </div>
             </motion.div>

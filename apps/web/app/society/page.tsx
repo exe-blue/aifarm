@@ -5,8 +5,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/lib/supabase/client';
-import type { Node, WormholeEvent, NodesStatusSummary } from '@/lib/supabase/types';
+import { supabase } from '../../lib/supabase/client';
+import type { Node, WormholeEvent, NodesStatusSummary } from '../../lib/supabase/types';
 
 // Components
 import {

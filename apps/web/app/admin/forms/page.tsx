@@ -10,7 +10,7 @@
 
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '../components/AdminLayout';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '../../../lib/supabase/client';
 
 // ============================================================
 // Types
@@ -347,7 +347,7 @@ function ChannelForm({ onMessage }: { onMessage: (type: 'success' | 'error', tex
               </tr>
             </thead>
             <tbody>
-              {channels.map((ch: Record<string, unknown>) => (
+              {(channels as Record<string, unknown>[]).map((ch) => (
                 <tr key={ch.id as string} className="border-t border-neutral-800 hover:bg-neutral-800/50">
                   <td className="px-3 py-2">{ch.channel_name as string}</td>
                   <td className="px-3 py-2 font-mono text-xs">{ch.channel_id as string}</td>
@@ -605,11 +605,11 @@ function VideoForm({ onMessage }: { onMessage: (type: 'success' | 'error', text:
               </tr>
             </thead>
             <tbody>
-              {videos.map((v: Record<string, unknown>) => (
+              {(videos as Record<string, unknown>[]).map((v) => (
                 <tr key={v.id as string} className="border-t border-neutral-800 hover:bg-neutral-800/50">
                   <td className="px-3 py-2 max-w-xs truncate">{v.title as string}</td>
                   <td className="px-3 py-2">
-                    {(v.channels as Record<string, unknown>)?.channel_name || '-'}
+                    {String((v.channels as Record<string, unknown>)?.channel_name ?? '-')}
                   </td>
                   <td className="px-3 py-2 text-center">
                     <StatusBadge status={v.status as string} />
@@ -695,7 +695,7 @@ function NodeForm({ onMessage }: { onMessage: (type: 'success' | 'error', text: 
             </tr>
           </thead>
           <tbody>
-            {nodes.map((n: Record<string, unknown>) => (
+            {(nodes as Record<string, unknown>[]).map((n) => (
               <tr key={n.id as string} className="border-t border-neutral-800 hover:bg-neutral-800/50">
                 <td className="px-3 py-2">{n.node_number as number}</td>
                 <td className="px-3 py-2">{n.nickname as string}</td>
@@ -867,7 +867,7 @@ function WormholeForm({ onMessage }: { onMessage: (type: 'success' | 'error', te
       <div className="mt-8">
         <h3 className="text-lg font-semibold mb-3">📋 최근 웜홀 이벤트</h3>
         <div className="space-y-2">
-          {wormholes.map((w: Record<string, unknown>) => (
+          {(wormholes as Record<string, unknown>[]).map((w) => (
             <div key={w.id as string} className="bg-neutral-800 rounded p-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-purple-400">{w.wormhole_type as string}</span>
@@ -877,7 +877,7 @@ function WormholeForm({ onMessage }: { onMessage: (type: 'success' | 'error', te
               </div>
               <div className="mt-1 text-neutral-300">
                 Score: {(w.resonance_score as number).toFixed(2)} | 
-                {(w.trigger_context as Record<string, unknown>)?.trigger_type}: {(w.trigger_context as Record<string, unknown>)?.trigger}
+                {String((w.trigger_context as Record<string, unknown>)?.trigger_type ?? '')}: {String((w.trigger_context as Record<string, unknown>)?.trigger ?? '')}
               </div>
             </div>
           ))}
@@ -997,7 +997,7 @@ function ConfigForm({ onMessage }: { onMessage: (type: 'success' | 'error', text
       <div className="mt-8">
         <h3 className="text-lg font-semibold mb-3">📋 현재 설정</h3>
         <div className="space-y-2">
-          {configs.map((c: Record<string, unknown>) => (
+          {(configs as Record<string, unknown>[]).map((c) => (
             <div key={c.key as string} className="bg-neutral-800 rounded p-3">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-amber-400">{c.key as string}</span>
@@ -1005,9 +1005,9 @@ function ConfigForm({ onMessage }: { onMessage: (type: 'success' | 'error', text
                   {new Date(c.updated_at as string).toLocaleString('ko-KR')}
                 </span>
               </div>
-              {c.description && (
+              {c.description ? (
                 <p className="text-sm text-neutral-400 mt-1">{c.description as string}</p>
-              )}
+              ) : null}
               <pre className="mt-2 text-xs bg-neutral-900 p-2 rounded overflow-x-auto">
                 {JSON.stringify(c.value, null, 2)}
               </pre>

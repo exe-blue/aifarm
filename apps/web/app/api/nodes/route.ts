@@ -44,9 +44,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
-    const limit = parseInt(searchParams.get('limit') || '1000');
-    const offset = parseInt(searchParams.get('offset') || '0');
-
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '100'), 1), 100);
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0);
     let nodes = Array.from(nodeStore.values());
 
     // 상태 필터링
@@ -206,14 +205,19 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        if (isHealthy === undefined) {
+          return NextResponse.json(
+            { success: false, error: 'isHealthy field is required' },
+            { status: 400 }
+          );
+        }
+
         healthCheckCache.set(nodeId, {
           nodeId,
-          isHealthy: isHealthy ?? true,
+          isHealthy,
           lastPing: Date.now(),
           errorMessage,
-        });
-
-        // 노드 상태 자동 업데이트
+        });        // 노드 상태 자동 업데이트
         const existingNode = nodeStore.get(nodeId);
         if (existingNode) {
           if (!isHealthy) {

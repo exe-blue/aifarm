@@ -4,7 +4,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import type { NodeStatus } from '@/lib/supabase/types';
+import type { NodeStatus } from '../../../lib/supabase/types';
 
 // ============================================
 // Status 설정
@@ -57,6 +57,71 @@ const STATUS_CONFIG: Record<NodeStatus, {
     bgColor: 'rgba(245, 158, 11, 0.15)',
     borderColor: 'rgba(245, 158, 11, 0.4)',
     isPulsing: false,
+  },
+  inactive: {
+    label: 'Inactive',
+    labelKo: '비활성',
+    color: '#6b7280',
+    bgColor: 'rgba(107, 114, 128, 0.1)',
+    borderColor: 'rgba(107, 114, 128, 0.3)',
+    isPulsing: false,
+  },
+  connecting: {
+    label: 'Connecting',
+    labelKo: '연결 중',
+    color: '#3b82f6',
+    bgColor: 'rgba(59, 130, 246, 0.15)',
+    borderColor: 'rgba(59, 130, 246, 0.4)',
+    isPulsing: true,
+  },
+  // Society Dashboard 추가 상태
+  watching_tiktok: {
+    label: 'Watching',
+    labelKo: '시청 중',
+    color: '#22c55e',
+    bgColor: 'rgba(34, 197, 94, 0.15)',
+    borderColor: 'rgba(34, 197, 94, 0.4)',
+    isPulsing: false,
+  },
+  discussing: {
+    label: 'Discussing',
+    labelKo: '토론 중',
+    color: '#3b82f6',
+    bgColor: 'rgba(59, 130, 246, 0.15)',
+    borderColor: 'rgba(59, 130, 246, 0.4)',
+    isPulsing: false,
+  },
+  creating: {
+    label: 'Creating',
+    labelKo: '창작 중',
+    color: '#ec4899',
+    bgColor: 'rgba(236, 72, 153, 0.15)',
+    borderColor: 'rgba(236, 72, 153, 0.4)',
+    isPulsing: false,
+  },
+  trading: {
+    label: 'Trading',
+    labelKo: '거래 중',
+    color: '#f59e0b',
+    bgColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    isPulsing: false,
+  },
+  observing: {
+    label: 'Observing',
+    labelKo: '관찰 중',
+    color: '#06b6d4',
+    bgColor: 'rgba(6, 182, 212, 0.15)',
+    borderColor: 'rgba(6, 182, 212, 0.4)',
+    isPulsing: false,
+  },
+  resting: {
+    label: 'Resting',
+    labelKo: '휴식 중',
+    color: '#8b5cf6',
+    bgColor: 'rgba(139, 92, 246, 0.15)',
+    borderColor: 'rgba(139, 92, 246, 0.4)',
+    isPulsing: true,
   },
 };
 

@@ -4,11 +4,11 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSocietyStatus, useActivityFeed, useActiveEvents } from '@/lib/supabase/realtime';
+import { useSocietyStatus, useActivityFeed, useActiveEvents } from '../../../lib/supabase/realtime';
 import { SimulatorControls } from './SimulatorControls';
 import { WormholeAlertContainer, WormholeEventsList } from './WormholeAlert';
 import { NodeStatusBadge } from './NodeStatusBadge';
-import type { ActivityFeedItem, SocialEvent, SocietyStatus } from '@/lib/supabase/types';
+import type { ActivityFeedItem, SocialEvent, SocietyStatus } from '../../../lib/supabase/types';
 
 // ============================================
 // Status Card
@@ -72,41 +72,51 @@ function SocietyStatsHeader({ status }: { status: SocietyStatus | null }) {
     );
   }
   
-  const moodEmoji = status.avg_mood > 0.6 ? '😊' : status.avg_mood > 0.4 ? '😐' : '😔';
-  const moodPercent = (status.avg_mood * 100).toFixed(1);
+  const avgMood = status.avg_mood ?? 0.5;
+  const moodEmoji = avgMood > 0.6 ? '😊' : avgMood > 0.4 ? '😐' : '😔';
+  const moodPercent = (avgMood * 100).toFixed(1);
   
+  // 안전한 값 접근
+  const statusAny = status as unknown as Record<string, unknown>;
+  const totalNodes = statusAny.total_nodes ?? statusAny.totalNodes ?? 0;
+  const onlineNodes = statusAny.online_nodes ?? statusAny.activeNodes ?? 0;
+  const watchingTiktok = statusAny.watching_tiktok ?? 0;
+  const totalEconomy = statusAny.total_economy ?? 0;
+  const avgBalance = statusAny.avg_balance ?? 0;
+  const avgReputation = statusAny.avg_reputation ?? 0.5;
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
       <StatusCard
         icon="🌐"
         label="Online Nodes"
-        value={`${status.online_nodes} / ${status.total_nodes}`}
-        subValue={`${status.total_nodes > 0 ? ((status.online_nodes / status.total_nodes) * 100).toFixed(0) : 0}% active`}
+        value={`${onlineNodes} / ${totalNodes}`}
+        subValue={`${totalNodes > 0 ? ((onlineNodes / totalNodes) * 100).toFixed(0) : 0}% active`}
         color="green"
       />
       <StatusCard
         icon="📺"
         label="Watching TikTok"
-        value={status.watching_tiktok}
+        value={watchingTiktok as number}
         color="amber"
       />
       <StatusCard
         icon="💰"
         label="Total Economy"
-        value={`$${status.total_economy.toLocaleString()}`}
-        subValue={`avg: $${status.avg_balance.toFixed(2)}`}
+        value={`$${(totalEconomy as number).toLocaleString()}`}
+        subValue={`avg: $${(avgBalance as number).toFixed(2)}`}
         color="purple"
       />
       <StatusCard
         icon={moodEmoji}
         label="Society Mood"
         value={`${moodPercent}%`}
-        color={status.avg_mood > 0.5 ? 'green' : 'red'}
+        color={avgMood > 0.5 ? 'green' : 'red'}
       />
       <StatusCard
         icon="⭐"
         label="Avg Reputation"
-        value={`${(status.avg_reputation * 100).toFixed(1)}%`}
+        value={`${((avgReputation as number) * 100).toFixed(1)}%`}
         color="neutral"
       />
     </div>

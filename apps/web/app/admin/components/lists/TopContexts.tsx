@@ -181,7 +181,7 @@ function ContextRow({
   onClick?: () => void;
 }) {
   // 방어적 타입 체크: 유효하지 않은 타입이면 기본값 사용
-  const typeConfig = WORMHOLE_TYPE_CONFIG[context.type] || DEFAULT_TYPE_CONFIG;
+  const typeConfig = context.type ? WORMHOLE_TYPE_CONFIG[context.type] : DEFAULT_TYPE_CONFIG;
   
   // 방어적 intensity 체크
   const intensity = typeof context.avgIntensity === 'number' ? context.avgIntensity : 0;
@@ -229,7 +229,8 @@ function ContextRow({
 // Type Badge
 // ============================================
 
-export function TypeBadge({ type }: { type: WormholeType }) {
+export function TypeBadge({ type }: { type?: WormholeType }) {
+  if (!type) return <span className="text-neutral-500 text-xs">-</span>;
   const config = WORMHOLE_TYPE_CONFIG[type];
   
   return (

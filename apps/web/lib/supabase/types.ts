@@ -7,16 +7,29 @@ import { z } from 'zod';
 // Node Schemas
 // ============================================
 
-export const NodeStatusSchema = z.enum(['active', 'inactive', 'in_umbra', 'connecting']);
+export const NodeStatusSchema = z.enum([
+  'active', 'inactive', 'in_umbra', 'connecting', 'offline', 'error', 'maintenance',
+  // Society Dashboard 추가 상태
+  'watching_tiktok', 'discussing', 'creating', 'trading', 'observing', 'resting'
+]);
 export const NodeStatusV2Schema = z.enum(['ACTIVE', 'INACTIVE', 'UMBRAL', 'ERROR']);
 
 export const NodeSchema = z.object({
   id: z.string().uuid(),
   name: z.string().optional(),
+  nickname: z.string().optional(),
   status: NodeStatusSchema,
   status_v2: NodeStatusV2Schema.optional(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime().optional(),
+  last_seen_at: z.string().datetime().optional(),
+  node_number: z.number().optional(),
+  ip_address: z.string().optional(),
+  trait: z.string().optional(),
+  current_activity: z.string().optional(),
+  umbra_since: z.string().datetime().optional(),
+  wallet_balance: z.number().optional(),
+  mood: z.string().optional(),
 });
 
 export type NodeStatus = z.infer<typeof NodeStatusSchema>;
@@ -106,10 +119,93 @@ export const isNode = (value: unknown): value is Node => {
 
 export const NodesStatusSummarySchema = z.object({
   total: z.number().int().nonnegative(),
+  total_nodes: z.number().int().nonnegative().optional(),
   active: z.number().int().nonnegative(),
+  active_count: z.number().int().nonnegative().optional(),
   inactive: z.number().int().nonnegative(),
+  offline_count: z.number().int().nonnegative().optional(),
   umbral: z.number().int().nonnegative(),
+  in_umbra_count: z.number().int().nonnegative().optional(),
+  umbra_long: z.number().int().nonnegative().optional(),
   error: z.number().int().nonnegative(),
+  error_count: z.number().int().nonnegative().optional(),
+  maintenance_count: z.number().int().nonnegative().optional(),
 });
 
 export type NodesStatusSummary = z.infer<typeof NodesStatusSummarySchema>;
+
+// ============================================
+// Wormhole Aggregate Types
+// ============================================
+
+export interface WormholeStats {
+  total: number;
+  alpha: number;
+  beta: number;
+  gamma: number;
+  avgScore: number;
+  avg_score_24h?: number;
+  last24h: number;
+  last_24h?: number;
+  last_7d?: number;
+  last_detected_at?: string;
+}
+
+export interface WormholeTopContext {
+  trigger: string;
+  context_key: string;
+  trigger_type?: string;
+  count: number;
+  event_count?: number;
+  avgScore: number;
+  avg_score?: number;
+}
+
+export interface WormholeTypeStats {
+  type: WormholeType;
+  wormhole_type?: 'α' | 'β' | 'γ';
+  count: number;
+  percentage: number;
+  avg_score?: number;
+}
+
+export interface WormholeScoreHistogram {
+  range: string;
+  bucket?: string;
+  score_range?: string;
+  count: number;
+}
+
+// ============================================
+// Society Dashboard Types (re-export)
+// ============================================
+
+export interface ActivityFeedItem {
+  id: string;
+  type: 'node_status_change' | 'wormhole_detected' | 'system_event';
+  message: string;
+  timestamp: Date;
+  metadata?: Record<string, unknown>;
+}
+
+export interface SocialEvent {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  timestamp: Date;
+}
+
+export interface SocietyStatus {
+  totalNodes: number;
+  total_nodes?: number;
+  activeNodes: number;
+  online_nodes?: number;
+  inactiveNodes: number;
+  umbralNodes: number;
+  umbral_nodes?: number;
+  wormholeCount: number;
+  wormhole_count_24h?: number;
+  lastUpdate: Date;
+  avg_mood?: number;
+}

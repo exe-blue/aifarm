@@ -15,12 +15,8 @@ interface KernelBrowser {
   browser_id: string;
 }
 
-interface KernelClient {
-  browsers: {
-    create: (options?: { profile?: string; timeout?: number }) => Promise<KernelBrowser>;
-    terminate: (browserId: string) => Promise<void>;
-  };
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type KernelClient = any;
 
 // 작업 결과 타입
 interface ActionResult {

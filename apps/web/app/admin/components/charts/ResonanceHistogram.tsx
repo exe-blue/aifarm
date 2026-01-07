@@ -49,7 +49,7 @@ export function ResonanceHistogram({
   const stats = useMemo(() => {
     const total = bins.reduce((sum, b) => sum + b.count, 0);
     const aboveThreshold = bins
-      .filter(b => b.range[0] >= threshold)
+      .filter(b => b.minScore >= threshold)
       .reduce((sum, b) => sum + b.count, 0);
     const belowThreshold = total - aboveThreshold;
     
@@ -132,8 +132,8 @@ export function ResonanceHistogram({
         <div className="absolute inset-0 flex items-end gap-1 px-1">
           {bins.map((bin, i) => {
             const height = (bin.count / maxCount) * 100;
-            const midpoint = (bin.range[0] + bin.range[1]) / 2;
-            const isAboveThreshold = bin.range[0] >= threshold;
+            const midpoint = (bin.minScore + bin.maxScore) / 2;
+            const isAboveThreshold = bin.minScore >= threshold;
             const color = getIntensityColor(midpoint);
             
             return (
@@ -151,7 +151,7 @@ export function ResonanceHistogram({
                 {/* Tooltip */}
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
                   <div className="bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-xs text-neutral-200 whitespace-nowrap">
-                    {bin.range[0].toFixed(2)} - {bin.range[1].toFixed(2)}: {bin.count}
+                    {bin.minScore.toFixed(2)} - {bin.maxScore.toFixed(2)}: {bin.count}
                   </div>
                 </div>
               </motion.div>

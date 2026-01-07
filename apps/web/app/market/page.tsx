@@ -21,6 +21,7 @@ import {
   WatchedStatsBar,
   CurrentlyWatchingPanel,
   InjectionPanel,
+  LaixiPanel,
   QueuePanel,
   LogsPanel,
   CompletedPanel,
@@ -253,8 +254,14 @@ function MarketContent() {
             isDark={isDark}
           />
 
-          {/* 4. 동영상 등록 (채널 연동은 Infra로 이동) */}
-          <InjectionPanel isDark={isDark} />
+          {/* 4. 동영상 등록 */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {/* 4-1. Bridge 방식 (기존) */}
+            <InjectionPanel isDark={isDark} />
+            
+            {/* 4-2. Laixi 로컬 제어 */}
+            <LaixiPanel isDark={isDark} />
+          </div>
 
           {/* 5. 대기열 + 로그 */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">

@@ -34,7 +34,7 @@ export async function GET() {
           .select('node_id, status');
 
         if (devicesError) {
-          processLogger.error(`Failed to fetch devices: ${devicesError.message}`);
+          console.error(`Failed to fetch devices: ${devicesError.message}`);
           return NextResponse.json(
             { error: 'Failed to fetch devices for runner stats' },
             { status: 500 }

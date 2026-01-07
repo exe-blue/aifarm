@@ -141,13 +141,11 @@ export function SimulatorControls({ onActivityGenerated }: SimulatorControlsProp
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ nodes: 3 }),
               });
-              
+
               if (!response.ok) {
-                const errorBody = await response.text();
-                console.error('[Wormhole] HTTP Error:', response.status, errorBody);
-                return;
+                throw new Error(`API error: ${response.status}`);
               }
-              
+
               const data = await response.json();
               if (data.success) {
                 console.log('[Wormhole]', data.message);

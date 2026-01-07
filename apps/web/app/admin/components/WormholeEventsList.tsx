@@ -5,8 +5,8 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
-import type { WormholeEvent } from '@/lib/supabase/types';
+import { supabase } from '../../../lib/supabase/client';
+import { WormholeEventSchema, type WormholeEvent } from '../../../lib/supabase/types';
 
 // ============================================
 // Props
@@ -85,8 +85,14 @@ export function WormholeEventsList({
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'wormhole_events' },
         (payload: { new: Record<string, unknown> }) => {
-          const newEvent = payload.new as WormholeEvent;
-          setEvents((prev) => [newEvent, ...prev].slice(0, limit));
+          const parsed = WormholeEventSchema.safeParse(payload.new);
+          
+          if (!parsed.success) {
+            console.warn('[WormholeEventsList] Invalid payload:', parsed.error.flatten());
+            return;
+          }
+          
+          setEvents((prev) => [parsed.data, ...prev].slice(0, limit));
         }
       )
       .subscribe();
