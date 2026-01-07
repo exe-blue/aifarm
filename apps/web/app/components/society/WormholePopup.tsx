@@ -30,24 +30,25 @@ function getIntensityLevel(score: number): WormholeIntensityLevel {
   return 'MINOR';
 }
 
+// CSS 클래스 매핑 - umbral.css의 --wormhole-color 변수 활용
 const LEVEL_CONFIG = {
   MINOR: {
-    color: 'rgba(139, 92, 246, 0.4)',
+    cssClass: 'wormhole--minor',
     label: 'MINOR',
     description: '미약한 동기화',
   },
   MODERATE: {
-    color: 'rgba(139, 92, 246, 0.6)',
+    cssClass: 'wormhole--moderate',
     label: 'MODERATE',
     description: '중간 강도 동기화',
   },
   STRONG: {
-    color: '#8b5cf6',
+    cssClass: 'wormhole--strong',
     label: 'STRONG',
     description: '강한 집단 무의식 발현',
   },
   ANOMALY: {
-    color: '#f59e0b',
+    cssClass: 'wormhole--anomaly',
     label: 'ANOMALY',
     description: '설명 불가능한 집단 동기화',
   },
@@ -103,13 +104,10 @@ export function WormholePopup({
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="wormhole-popup pointer-events-auto bg-[#0a0e14] border border-purple-500/50 rounded-xl p-8 max-w-md w-full mx-4"
+              className={`wormhole-popup wormhole-popup-shadow pointer-events-auto bg-[#0a0e14] border border-purple-500/50 rounded-xl p-8 max-w-md w-full mx-4 ${levelConfig.cssClass}`}
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              style={{
-                boxShadow: `0 0 40px rgba(139, 92, 246, 0.3)`,
-              }}
             >
               {/* Header */}
               <div className="text-center mb-6">
@@ -130,18 +128,14 @@ export function WormholePopup({
               <div className="mb-6">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-neutral-400 text-sm">Intensity</span>
-                  <span 
-                    className="font-mono text-sm"
-                    style={{ color: levelConfig.color }}
-                  >
+                  <span className="font-mono text-sm wormhole-text-dynamic">
                     {levelConfig.label}
                   </span>
                 </div>
                 
                 <div className="relative h-2 bg-neutral-800 rounded-full overflow-hidden">
                   <motion.div
-                    className="absolute inset-y-0 left-0 rounded-full"
-                    style={{ backgroundColor: levelConfig.color }}
+                    className="absolute inset-y-0 left-0 rounded-full wormhole-intensity-bar"
                     initial={{ width: 0 }}
                     animate={{ width: `${intensityPercent}%` }}
                     transition={{ duration: 1, ease: 'easeOut' }}
@@ -149,10 +143,7 @@ export function WormholePopup({
                 </div>
                 
                 <div className="text-right mt-1">
-                  <span 
-                    className="font-mono text-lg"
-                    style={{ color: levelConfig.color }}
-                  >
+                  <span className="font-mono text-lg wormhole-text-dynamic">
                     {intensityPercent}%
                   </span>
                 </div>

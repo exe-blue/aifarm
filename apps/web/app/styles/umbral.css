@@ -317,3 +317,36 @@
 }
 
 
+/* ============================================
+   VI. WORMHOLE POPUP DYNAMIC STYLES
+   ============================================ */
+
+/* Box shadow 유틸리티 - CSS 변수 기반 */
+.wormhole-popup-shadow {
+  box-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+.wormhole-toast-shadow {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+}
+
+/* 동적 색상 유틸리티 - --wormhole-color 변수 사용 */
+.wormhole-text-dynamic {
+  color: var(--wormhole-color);
+}
+
+.wormhole-bg-dynamic {
+  background-color: var(--wormhole-color);
+}
+
+/* 레벨 배지 스타일 */
+.wormhole-level-badge {
+  background-color: color-mix(in srgb, var(--wormhole-color) 12%, transparent);
+  color: var(--wormhole-color);
+}
+
+/* 강도 바 스타일 */
+.wormhole-intensity-bar {
+  background-color: var(--wormhole-color);
+}
+
