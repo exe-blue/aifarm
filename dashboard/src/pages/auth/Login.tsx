@@ -33,8 +33,8 @@ export default function LoginPage() {
       return;
     }
 
-    // rememberMe 플래그를 login 함수에 전달
-    const success = await login(email, password, rememberMe);
+    // TODO: rememberMe 기능 구현 필요
+    const success = await login(email, password);
 
     if (success) {
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';

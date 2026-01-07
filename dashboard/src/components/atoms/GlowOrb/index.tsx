@@ -11,7 +11,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import { LSPState, LSP_COLORS, LSP_GLOW_SPECS } from '../../../types/lsp';
+import { LSPState, LSP_GLOW_SPECS } from '../../../types/lsp';
 import './styles.css';
 
 interface GlowOrbProps {
