@@ -67,6 +67,7 @@ export function useYouTubeChannelPolling({
             // 자동 등록
             if (autoRegister && !video.registered) {
               addVideo({
+                videoId: video.videoId,
                 title: video.title,
                 url: `https://www.youtube.com/watch?v=${video.videoId}`,
                 thumbnail: video.thumbnail,

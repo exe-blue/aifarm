@@ -38,8 +38,8 @@ export function useVideoQueue() {
     paused: pausedVideos.length,
     completed: state.completedVideos.length,
     totalViews: state.completedVideos.reduce((sum, v) => sum + v.totalViews, 0),
-    todayViews: state.stats.todayWatched,
-  }), [state.queuedVideos, queuedVideos, runningVideos, pausedVideos, state.completedVideos, state.stats.todayWatched]);
+    todayViews: state.stats.todayViews,
+  }), [state.queuedVideos, queuedVideos, runningVideos, pausedVideos, state.completedVideos, state.stats.todayViews]);
 
   // 비디오 시작
   const startVideo = useCallback((videoId: string) => {

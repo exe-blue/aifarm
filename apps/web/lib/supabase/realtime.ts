@@ -3,47 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './client';
-import type { Node, WormholeEvent, NodesStatusSummary } from './types';
-
-// ============================================
-// Types (SocietyDashboard 호환)
-// ============================================
-
-export interface SocietyStatus {
-  totalNodes: number;
-  activeNodes: number;
-  inactiveNodes: number;
-  umbralNodes: number;
-  wormholeCount: number;
-  lastUpdate: Date;
-}
-
-export interface ActivityFeedItem {
-  id: string;
-  type: 'node_status_change' | 'wormhole_detected' | 'system_event' | 'earn' | 'reward' | 'spend';
-  message?: string;
-  timestamp?: Date;
-  metadata?: Record<string, unknown>;
-  // 경제 활동 피드용 필드
-  node_number?: number;
-  description?: string;
-  amount?: number;
-  trait?: string;
-  status?: string;
-  created_at?: string;
-}
-
-export interface SocialEvent {
-  id: string;
-  type: string;
-  title: string;
-  description: string;
-  timestamp: Date;
-  severity: 'minor' | 'moderate' | 'major' | 'critical';
-  affected_nodes: number;
-  economic_impact: number;
-  mood_shift: number;
-}
+import type { Node, WormholeEvent, NodesStatusSummary, SocietyStatus, ActivityFeedItem, SocialEvent } from './types';
 
 // ============================================
 // Hook: useSocietyStatus
@@ -215,6 +175,10 @@ export function useActiveEvents() {
           title: `웜홀 ${w.wormhole_type}`,
           description: w.trigger_context?.trigger || '알 수 없는 트리거',
           timestamp: new Date(w.detected_at),
+          severity: w.resonance_score >= 0.8 ? 'critical' : w.resonance_score >= 0.6 ? 'major' : w.resonance_score >= 0.4 ? 'moderate' : 'minor',
+          affected_nodes: w.trigger_context?.all_node_ids?.length || 2,
+          economic_impact: 0,
+          mood_shift: 0,
         }));
 
         setEvents(socialEvents);

@@ -15,11 +15,15 @@ if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ NEXT_PUBLIC_SUPABASE_URL 및 SUPABASE_SERVICE_ROLE_KEY 환경 변수가 필요합니다.');
   process.exit(1);
 }
+
+const url: string = supabaseUrl;
+const serviceKey: string = supabaseServiceKey;
+
 async function runMigration() {
   console.log('🚀 Supabase 마이그레이션 시작...');
-  console.log(`URL: ${supabaseUrl}`);
-  
-  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  console.log(`URL: ${url}`);
+
+  const supabase = createClient(url, serviceKey, {
     auth: { persistSession: false }
   });
 

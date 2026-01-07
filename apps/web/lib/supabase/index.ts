@@ -7,7 +7,7 @@ export { supabase } from './client';
 // 타입
 export * from './types';
 
-// Realtime Hooks
-export * from './realtime';
+// Realtime Hooks (타입은 types.ts에서 export하므로 훅만 export)
+export { useSocietyStatus, useActivityFeed, useActiveEvents } from './realtime';
 
 

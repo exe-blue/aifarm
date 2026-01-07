@@ -86,12 +86,7 @@ export interface WormholeListItem {
   nodeCount: number;
 }
 
-export interface TopContextItem {
-  context: string;
-  count: number;
-  avgScore: number;
-  lastSeen: Date;
-}
+// TopContextItem is defined below with more fields
 
 // ============================================
 // Color Utilities
