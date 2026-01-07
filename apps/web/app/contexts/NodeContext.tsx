@@ -1,14 +1,16 @@
 'use client';
 
 // ============================================
-// DoAi.ME - Node Context v4.0
+// DoAi.ME - Node Context v5.0
 // 
 // 용어:
 // - Node (노드) = PC (Bridge 실행 컴퓨터)
 // - Device (디바이스) = 스마트폰 (Android 기기)
 // 
-// 아키텍처: N개의 Node에 각각 M개의 Device가 연결됨
-// 모든 Node는 WebSocket으로 연결
+// v5.0 변경사항:
+// - 안정적인 WebSocket 재연결 (지수 백오프)
+// - 깔끔한 로그 시스템 (중복 방지, 카테고리화)
+// - 연결 상태 명확화
 // ============================================
 
 import React, {
@@ -54,7 +56,7 @@ export interface Device {
   currentTask: { videoId: string; title: string } | null;
   lastSeen: Date;
   traits: string[];
-  nodeId: string; // 이 디바이스가 속한 노드 ID
+  nodeId: string;
   errorMessage?: string;
   recoveryAttempts: number;
 }
@@ -95,6 +97,7 @@ export interface LogEntry {
   message: string;
   nodeId?: string;
   deviceId?: string;
+  category?: 'connection' | 'device' | 'video' | 'kernel' | 'system';
 }
 
 export interface SystemStats {
@@ -122,6 +125,7 @@ interface NodeState {
   stats: SystemStats;
   connectionStatus: ConnectionStatus;
   lastError: string | null;
+  reconnectAttempt: number;
 }
 
 // ============================================
@@ -129,25 +133,22 @@ interface NodeState {
 // ============================================
 
 type NodeAction =
-  // Node 액션
   | { type: 'SET_NODE'; payload: GatewayNode }
   | { type: 'UPDATE_NODE'; payload: Partial<GatewayNode> & { id: string } }
   | { type: 'REMOVE_NODE'; payload: string }
   | { type: 'SET_NODE_OFFLINE'; payload: string }
-  // Device 액션
   | { type: 'SET_DEVICES'; payload: { nodeId: string; devices: Device[] } }
   | { type: 'UPDATE_DEVICE'; payload: Partial<Device> & { id: string } }
   | { type: 'SET_DEVICE_OFFLINE'; payload: string }
-  | { type: 'SET_ALL_DEVICES_OFFLINE'; payload: string } // nodeId
-  // Video 액션
+  | { type: 'SET_ALL_DEVICES_OFFLINE'; payload: string }
   | { type: 'ADD_QUEUED_VIDEO'; payload: QueuedVideo }
   | { type: 'UPDATE_QUEUED_VIDEO'; payload: Partial<QueuedVideo> & { id: string } }
   | { type: 'REMOVE_QUEUED_VIDEO'; payload: string }
   | { type: 'ADD_COMPLETED_VIDEO'; payload: CompletedVideo }
-  // 기타 액션
   | { type: 'ADD_LOG'; payload: Omit<LogEntry, 'id' | 'timestamp'> }
   | { type: 'CLEAR_LOGS' }
   | { type: 'SET_CONNECTION_STATUS'; payload: ConnectionStatus }
+  | { type: 'SET_RECONNECT_ATTEMPT'; payload: number }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'UPDATE_STATS' }
   | { type: 'RESET_STATE' };
@@ -177,6 +178,7 @@ const initialState: NodeState = {
   stats: initialStats,
   connectionStatus: 'disconnected',
   lastError: null,
+  reconnectAttempt: 0,
 };
 
 // ============================================
@@ -202,7 +204,6 @@ function calculateStats(nodes: Map<string, GatewayNode>, devices: Map<string, De
 
 function nodeReducer(state: NodeState, action: NodeAction): NodeState {
   switch (action.type) {
-    // ─── Node 액션 ───
     case 'SET_NODE': {
       const newNodes = new Map(state.nodes);
       newNodes.set(action.payload.id, action.payload);
@@ -224,7 +225,6 @@ function nodeReducer(state: NodeState, action: NodeAction): NodeState {
     case 'REMOVE_NODE': {
       const newNodes = new Map(state.nodes);
       newNodes.delete(action.payload);
-      // 해당 노드의 디바이스도 제거
       const newDevices = new Map(state.devices);
       state.devices.forEach((device, id) => {
         if (device.nodeId === action.payload) {
@@ -250,16 +250,13 @@ function nodeReducer(state: NodeState, action: NodeAction): NodeState {
       return { ...state, nodes: newNodes, stats: newStats };
     }
 
-    // ─── Device 액션 ───
     case 'SET_DEVICES': {
       const newDevices = new Map(state.devices);
-      // 먼저 해당 노드의 기존 디바이스 제거
       state.devices.forEach((device, id) => {
         if (device.nodeId === action.payload.nodeId) {
           newDevices.delete(id);
         }
       });
-      // 새 디바이스 추가
       action.payload.devices.forEach(device => {
         newDevices.set(device.id, device);
       });
@@ -308,7 +305,6 @@ function nodeReducer(state: NodeState, action: NodeAction): NodeState {
       return { ...state, devices: newDevices, stats: newStats };
     }
 
-    // ─── Video 액션 ───
     case 'ADD_QUEUED_VIDEO':
       return { ...state, queuedVideos: [...state.queuedVideos, action.payload] };
 
@@ -334,14 +330,14 @@ function nodeReducer(state: NodeState, action: NodeAction): NodeState {
         },
       };
 
-    // ─── 기타 액션 ───
     case 'ADD_LOG': {
       const newLog: LogEntry = {
         id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
         timestamp: new Date(),
         ...action.payload,
       };
-      return { ...state, logs: [newLog, ...state.logs.slice(0, 199)] }; // 최대 200개
+      // 최대 300개 로그 유지
+      return { ...state, logs: [newLog, ...state.logs.slice(0, 299)] };
     }
 
     case 'CLEAR_LOGS':
@@ -349,6 +345,9 @@ function nodeReducer(state: NodeState, action: NodeAction): NodeState {
 
     case 'SET_CONNECTION_STATUS':
       return { ...state, connectionStatus: action.payload };
+
+    case 'SET_RECONNECT_ATTEMPT':
+      return { ...state, reconnectAttempt: action.payload };
 
     case 'SET_ERROR':
       return { ...state, lastError: action.payload };
@@ -372,30 +371,20 @@ function nodeReducer(state: NodeState, action: NodeAction): NodeState {
 
 interface NodeContextValue {
   state: NodeState;
-  
-  // 노드(PC) 관리
   nodes: GatewayNode[];
   getNodeById: (id: string) => GatewayNode | undefined;
   getOnlineNodes: () => GatewayNode[];
-  
-  // 디바이스(스마트폰) 관리
   devices: Device[];
   getDeviceById: (id: string) => Device | undefined;
   getDevicesByNodeId: (nodeId: string) => Device[];
   getIdleDevices: () => Device[];
   getBusyDevices: () => Device[];
-  
-  // 비디오 관리
   addVideo: (video: Omit<QueuedVideo, 'id' | 'registeredAt' | 'status' | 'assignedDevices' | 'progress' | 'currentViews'>) => void;
   updateVideo: (video: Partial<QueuedVideo> & { id: string }) => void;
   completeVideo: (videoId: string, stats: { successCount: number; errorCount: number }) => void;
   injectVideo: (video: { videoId: string; title: string; url: string; thumbnail?: string; channel?: string }, targetViews: number, options?: Record<string, unknown>) => void;
-  
-  // 로그
-  addLog: (level: LogEntry['level'], message: string, nodeId?: string, deviceId?: string) => void;
+  addLog: (level: LogEntry['level'], message: string, options?: { nodeId?: string; deviceId?: string; category?: LogEntry['category'] }) => void;
   clearLogs: () => void;
-  
-  // 연결
   connect: () => void;
   disconnect: () => void;
   refreshDevices: () => void;
@@ -421,48 +410,114 @@ interface NodeProviderProps {
 export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
   const effectiveWsEndpoint = wsEndpoint || getWebSocketUrl();
   const [state, dispatch] = useReducer(nodeReducer, initialState);
+  
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
-  const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isConnectingRef = useRef(false);
+  const lastLogRef = useRef<{ message: string; time: number }>({ message: '', time: 0 });
   
-  const MAX_RECONNECT_ATTEMPTS = 10;
-  const RECONNECT_DELAY = 3000;
-  const HEALTH_CHECK_INTERVAL = 30000;
-  const DEVICE_TIMEOUT = 60000; // 60초 응답 없으면 오프라인
+  // 설정
+  const MAX_RECONNECT_ATTEMPTS = 20;
+  const BASE_RECONNECT_DELAY = 1000; // 1초부터 시작
+  const MAX_RECONNECT_DELAY = 30000; // 최대 30초
 
   // ─────────────────────────────────────────
-  // WebSocket 연결 관리
+  // 로그 추가 (중복 방지)
+  // ─────────────────────────────────────────
+  
+  const addLogInternal = useCallback((
+    level: LogEntry['level'], 
+    message: string, 
+    options?: { nodeId?: string; deviceId?: string; category?: LogEntry['category'] }
+  ) => {
+    const now = Date.now();
+    
+    // 같은 메시지가 1초 이내에 중복되면 무시
+    if (lastLogRef.current.message === message && now - lastLogRef.current.time < 1000) {
+      return;
+    }
+    
+    lastLogRef.current = { message, time: now };
+    
+    dispatch({ 
+      type: 'ADD_LOG', 
+      payload: { 
+        level, 
+        message, 
+        nodeId: options?.nodeId,
+        deviceId: options?.deviceId,
+        category: options?.category,
+      } 
+    });
+  }, []);
+
+  // ─────────────────────────────────────────
+  // 재연결 딜레이 계산 (지수 백오프)
+  // ─────────────────────────────────────────
+  
+  const getReconnectDelay = useCallback((attempt: number): number => {
+    // 지수 백오프: 1초, 2초, 4초, 8초... 최대 30초
+    const delay = Math.min(BASE_RECONNECT_DELAY * Math.pow(2, attempt), MAX_RECONNECT_DELAY);
+    // 약간의 랜덤 지터 추가 (0-500ms)
+    return delay + Math.random() * 500;
+  }, []);
+
+  // ─────────────────────────────────────────
+  // WebSocket 연결
   // ─────────────────────────────────────────
 
   const connect = useCallback(() => {
+    // 이미 연결 중이거나 연결됨
+    if (isConnectingRef.current) {
+      return;
+    }
+    
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      addLogInternal('info', '이미 연결되어 있습니다', { category: 'connection' });
+      return;
+    }
+
     if (!effectiveWsEndpoint) {
       dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'error' });
-      dispatch({ type: 'ADD_LOG', payload: { level: 'error', message: 'WebSocket URL이 설정되지 않았습니다' } });
+      addLogInternal('error', '❌ WebSocket URL이 설정되지 않았습니다', { category: 'connection' });
       return;
     }
 
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
-
+    isConnectingRef.current = true;
     dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'connecting' });
-    dispatch({ type: 'ADD_LOG', payload: { level: 'info', message: `Bridge 연결 중: ${effectiveWsEndpoint}` } });
+    
+    const attemptNum = reconnectAttemptsRef.current;
+    if (attemptNum === 0) {
+      addLogInternal('info', `🔌 Bridge 연결 시도: ${effectiveWsEndpoint}`, { category: 'connection' });
+    } else {
+      addLogInternal('info', `🔄 재연결 시도 ${attemptNum}/${MAX_RECONNECT_ATTEMPTS}`, { category: 'connection' });
+    }
 
     try {
       const ws = new WebSocket(effectiveWsEndpoint);
 
+      // 연결 타임아웃 (10초)
+      const connectionTimeout = setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          ws.close();
+          addLogInternal('warn', '⏱️ 연결 타임아웃 (10초)', { category: 'connection' });
+        }
+      }, 10000);
+
       ws.onopen = () => {
-        dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'connected' });
-        dispatch({ type: 'SET_ERROR', payload: null });
-        dispatch({ type: 'ADD_LOG', payload: { level: 'success', message: '✓ Bridge 연결 성공' } });
+        clearTimeout(connectionTimeout);
+        isConnectingRef.current = false;
         reconnectAttemptsRef.current = 0;
+        
+        dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'connected' });
+        dispatch({ type: 'SET_RECONNECT_ATTEMPT', payload: 0 });
+        dispatch({ type: 'SET_ERROR', payload: null });
+        
+        addLogInternal('success', '✅ Bridge 연결 성공', { category: 'connection' });
 
         // 초기 상태 요청
         ws.send(JSON.stringify({ type: 'GET_STATE' }));
-        
-        // 헬스체크 시작
-        startHealthCheck();
       };
 
       ws.onmessage = (event) => {
@@ -470,117 +525,95 @@ export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
           const data = JSON.parse(event.data);
           handleWebSocketMessage(data);
         } catch (error) {
-          dispatch({ type: 'ADD_LOG', payload: { level: 'error', message: `메시지 파싱 오류: ${error}` } });
+          addLogInternal('error', `📩 메시지 파싱 오류: ${error}`, { category: 'system' });
         }
       };
 
-      ws.onerror = () => {
-        dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'error' });
-        dispatch({ type: 'ADD_LOG', payload: { level: 'error', message: 'Bridge 연결 오류' } });
+      ws.onerror = (event) => {
+        clearTimeout(connectionTimeout);
+        isConnectingRef.current = false;
+        
+        // onerror 다음에 onclose가 호출되므로 여기서는 간단히 로그만
+        const errorInfo = (event as ErrorEvent).message || 'Unknown error';
+        addLogInternal('error', `⚠️ WebSocket 오류: ${errorInfo}`, { category: 'connection' });
       };
 
-      ws.onclose = () => {
-        dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'disconnected' });
+      ws.onclose = (event) => {
+        clearTimeout(connectionTimeout);
+        isConnectingRef.current = false;
         wsRef.current = null;
-        stopHealthCheck();
+        
+        dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'disconnected' });
 
-        // 모든 노드 오프라인 처리
-        state.nodes.forEach((node) => {
-          dispatch({ type: 'SET_NODE_OFFLINE', payload: node.id });
-          dispatch({ type: 'SET_ALL_DEVICES_OFFLINE', payload: node.id });
-        });
+        // 클로즈 코드별 메시지
+        let closeReason = '';
+        switch (event.code) {
+          case 1000: closeReason = '정상 종료'; break;
+          case 1001: closeReason = '페이지 이동'; break;
+          case 1002: closeReason = '프로토콜 오류'; break;
+          case 1003: closeReason = '지원하지 않는 데이터'; break;
+          case 1006: closeReason = '비정상 종료 (서버 다운?)'; break;
+          case 1007: closeReason = '잘못된 데이터'; break;
+          case 1008: closeReason = '정책 위반'; break;
+          case 1009: closeReason = '메시지 너무 큼'; break;
+          case 1011: closeReason = '서버 오류'; break;
+          case 1015: closeReason = 'TLS 핸드셰이크 실패'; break;
+          default: closeReason = event.reason || `코드: ${event.code}`;
+        }
 
         // 재연결 시도
         if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+          const delay = getReconnectDelay(reconnectAttemptsRef.current);
           reconnectAttemptsRef.current++;
-          dispatch({
-            type: 'ADD_LOG',
-            payload: {
-              level: 'warn',
-              message: `연결 끊김. ${RECONNECT_DELAY / 1000}초 후 재연결 (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})`,
-            },
-          });
+          
+          dispatch({ type: 'SET_RECONNECT_ATTEMPT', payload: reconnectAttemptsRef.current });
+          
+          addLogInternal(
+            'warn', 
+            `🔌 연결 끊김 (${closeReason}). ${(delay / 1000).toFixed(1)}초 후 재연결...`, 
+            { category: 'connection' }
+          );
 
-          reconnectTimeoutRef.current = setTimeout(connect, RECONNECT_DELAY);
+          reconnectTimeoutRef.current = setTimeout(connect, delay);
         } else {
-          dispatch({
-            type: 'SET_ERROR',
-            payload: '최대 재연결 시도 초과. 수동으로 재연결하세요.',
-          });
-          dispatch({ type: 'ADD_LOG', payload: { level: 'error', message: '❌ Bridge 연결 실패' } });
+          dispatch({ type: 'SET_ERROR', payload: '최대 재연결 횟수 초과' });
+          addLogInternal(
+            'error', 
+            `❌ 재연결 실패 (${MAX_RECONNECT_ATTEMPTS}회 시도). 수동으로 재연결하세요.`, 
+            { category: 'connection' }
+          );
         }
       };
 
       wsRef.current = ws;
     } catch (error) {
+      isConnectingRef.current = false;
       dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'error' });
-      dispatch({ type: 'SET_ERROR', payload: `연결 실패: ${error}` });
+      addLogInternal('error', `❌ 연결 생성 실패: ${error}`, { category: 'connection' });
     }
-  }, [effectiveWsEndpoint, state.nodes]);
+  }, [effectiveWsEndpoint, addLogInternal, getReconnectDelay]);
 
   const disconnect = useCallback(() => {
+    // 재연결 타이머 취소
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     }
-    stopHealthCheck();
+    
+    // 연결 시도 플래그 초기화
+    isConnectingRef.current = false;
+    reconnectAttemptsRef.current = 0;
+    
+    // WebSocket 닫기
     if (wsRef.current) {
-      wsRef.current.close();
+      wsRef.current.close(1000, 'User disconnect');
       wsRef.current = null;
     }
-    dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'disconnected' });
-  }, []);
-
-  // ─────────────────────────────────────────
-  // 헬스체크 (디바이스/노드 상태 모니터링)
-  // ─────────────────────────────────────────
-
-  const startHealthCheck = useCallback(() => {
-    stopHealthCheck();
     
-    healthCheckIntervalRef.current = setInterval(() => {
-      const now = Date.now();
-      
-      // 디바이스 헬스체크
-      state.devices.forEach((device) => {
-        const lastSeen = new Date(device.lastSeen).getTime();
-        if (now - lastSeen > DEVICE_TIMEOUT && device.status !== 'offline') {
-          dispatch({ type: 'SET_DEVICE_OFFLINE', payload: device.id });
-          dispatch({
-            type: 'ADD_LOG',
-            payload: {
-              level: 'warn',
-              message: `디바이스 오프라인: ${device.name}`,
-              deviceId: device.id,
-            },
-          });
-        }
-      });
-
-      // 노드 헬스체크
-      state.nodes.forEach((node) => {
-        const lastSeen = new Date(node.lastSeen).getTime();
-        if (now - lastSeen > DEVICE_TIMEOUT && node.status !== 'offline') {
-          dispatch({ type: 'SET_NODE_OFFLINE', payload: node.id });
-          dispatch({ type: 'SET_ALL_DEVICES_OFFLINE', payload: node.id });
-          dispatch({
-            type: 'ADD_LOG',
-            payload: {
-              level: 'error',
-              message: `노드 오프라인: ${node.hostname}`,
-              nodeId: node.id,
-            },
-          });
-        }
-      });
-    }, HEALTH_CHECK_INTERVAL);
-  }, [state.devices, state.nodes]);
-
-  const stopHealthCheck = useCallback(() => {
-    if (healthCheckIntervalRef.current) {
-      clearInterval(healthCheckIntervalRef.current);
-      healthCheckIntervalRef.current = null;
-    }
-  }, []);
+    dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'disconnected' });
+    dispatch({ type: 'SET_RECONNECT_ATTEMPT', payload: 0 });
+    addLogInternal('info', '🔌 연결 종료됨', { category: 'connection' });
+  }, [addLogInternal]);
 
   // ─────────────────────────────────────────
   // WebSocket 메시지 핸들러
@@ -596,14 +629,11 @@ export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
           dispatch({ type: 'SET_NODE', payload: node });
           
           if (data.type === 'INIT') {
-            dispatch({
-              type: 'ADD_LOG',
-              payload: {
-                level: 'success',
-                message: `노드 연결됨: ${node.hostname} (${node.ipAddress})`,
-                nodeId: node.id,
-              },
-            });
+            addLogInternal(
+              'success', 
+              `📡 노드 연결: ${node.hostname} (${node.ipAddress})`,
+              { category: 'device', nodeId: node.id }
+            );
           }
         }
         
@@ -617,51 +647,44 @@ export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
           
           if (data.type === 'INIT') {
             const onlineCount = devices.filter(d => d.status !== 'offline').length;
-            dispatch({
-              type: 'ADD_LOG',
-              payload: {
-                level: 'info',
-                message: `${devices.length}개 디바이스 (${onlineCount}개 온라인)`,
-                nodeId,
-              },
-            });
+            addLogInternal(
+              'info', 
+              `📱 ${devices.length}개 디바이스 감지 (${onlineCount}개 온라인)`,
+              { category: 'device', nodeId }
+            );
           }
         }
         break;
       }
 
       case 'DEVICE_STATUS': {
+        const deviceId = data.deviceId as string;
+        const status = data.status as DeviceStatus;
+        const task = data.currentTask as { videoId: string; title: string } | null;
+        
         dispatch({
           type: 'UPDATE_DEVICE',
-          payload: {
-            id: data.deviceId as string,
-            status: data.status as DeviceStatus,
-            currentTask: data.currentTask as { videoId: string; title: string } | null,
-            lastSeen: new Date(),
-          },
+          payload: { id: deviceId, status, currentTask: task, lastSeen: new Date() },
         });
+        
+        // 상태 변경 로그 (busy/idle 전환만)
+        if (status === 'busy' && task) {
+          addLogInternal('info', `▶️ 시청 시작: ${task.title}`, { category: 'video', deviceId });
+        } else if (status === 'idle') {
+          addLogInternal('info', `⏹️ 작업 완료`, { category: 'video', deviceId });
+        }
         break;
       }
 
       case 'DEVICE_ERROR': {
         const deviceId = data.deviceId as string;
+        const error = data.error as string;
+        
         dispatch({
           type: 'UPDATE_DEVICE',
-          payload: {
-            id: deviceId,
-            status: 'error',
-            errorMessage: data.error as string,
-            currentTask: null,
-          },
+          payload: { id: deviceId, status: 'error', errorMessage: error, currentTask: null },
         });
-        dispatch({
-          type: 'ADD_LOG',
-          payload: {
-            level: 'error',
-            message: `디바이스 오류: ${data.error}`,
-            deviceId,
-          },
-        });
+        addLogInternal('error', `❌ 디바이스 오류: ${error}`, { category: 'device', deviceId });
         break;
       }
 
@@ -669,63 +692,32 @@ export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
         const deviceId = data.deviceId as string;
         dispatch({
           type: 'UPDATE_DEVICE',
-          payload: {
-            id: deviceId,
-            status: 'idle',
-            errorMessage: undefined,
-            recoveryAttempts: 0,
-            lastSeen: new Date(),
-          },
+          payload: { id: deviceId, status: 'idle', errorMessage: undefined, recoveryAttempts: 0, lastSeen: new Date() },
         });
-        dispatch({
-          type: 'ADD_LOG',
-          payload: {
-            level: 'success',
-            message: `디바이스 복구됨`,
-            deviceId,
-          },
-        });
+        addLogInternal('success', `✅ 디바이스 복구됨`, { category: 'device', deviceId });
         break;
       }
 
       case 'LAIXI_CONNECTED': {
         const nodeId = data.nodeId as string;
-        dispatch({
-          type: 'UPDATE_NODE',
-          payload: { id: nodeId, laixiConnected: true, status: 'online' },
-        });
-        dispatch({
-          type: 'ADD_LOG',
-          payload: { level: 'success', message: '✓ Laixi 연결됨', nodeId },
-        });
+        dispatch({ type: 'UPDATE_NODE', payload: { id: nodeId, laixiConnected: true, status: 'online' } });
+        addLogInternal('success', `✅ Laixi 연결됨`, { category: 'connection', nodeId });
         break;
       }
 
       case 'LAIXI_DISCONNECTED': {
         const nodeId = data.nodeId as string;
-        dispatch({
-          type: 'UPDATE_NODE',
-          payload: { id: nodeId, laixiConnected: false },
-        });
+        dispatch({ type: 'UPDATE_NODE', payload: { id: nodeId, laixiConnected: false } });
         dispatch({ type: 'SET_ALL_DEVICES_OFFLINE', payload: nodeId });
-        dispatch({
-          type: 'ADD_LOG',
-          payload: { level: 'error', message: '⚠ Laixi 연결 끊김 - 디바이스 오프라인', nodeId },
-        });
+        addLogInternal('error', `⚠️ Laixi 연결 끊김`, { category: 'connection', nodeId });
         break;
       }
 
       case 'LAIXI_RECONNECTING': {
         const nodeId = data.nodeId as string;
         const attempt = data.attempt as number;
-        dispatch({
-          type: 'UPDATE_NODE',
-          payload: { id: nodeId, status: 'reconnecting', reconnectAttempts: attempt },
-        });
-        dispatch({
-          type: 'ADD_LOG',
-          payload: { level: 'warn', message: `Laixi 재연결 시도 중 (${attempt}/10)`, nodeId },
-        });
+        dispatch({ type: 'UPDATE_NODE', payload: { id: nodeId, status: 'reconnecting', reconnectAttempts: attempt } });
+        addLogInternal('warn', `🔄 Laixi 재연결 중 (${attempt}/10)`, { category: 'connection', nodeId });
         break;
       }
 
@@ -742,25 +734,13 @@ export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
       }
 
       case 'WATCH_PROGRESS': {
-        dispatch({
-          type: 'ADD_LOG',
-          payload: {
-            level: 'info',
-            message: `📺 시청 중: ${data.progress}%`,
-            deviceId: data.deviceId as string,
-          },
-        });
+        // 시청 진행률 (너무 자주 오면 로그 안 함)
         break;
       }
 
       case 'VIDEO_DISTRIBUTED': {
-        dispatch({
-          type: 'ADD_LOG',
-          payload: {
-            level: 'success',
-            message: `영상 배분: ${data.distributedCount}개 디바이스`,
-          },
-        });
+        const count = data.distributedCount as number;
+        addLogInternal('success', `📤 영상 배분 완료: ${count}개 디바이스`, { category: 'video' });
         break;
       }
 
@@ -773,46 +753,46 @@ export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
       }
 
       case 'INJECT_RESULT': {
-        dispatch({
-          type: 'ADD_LOG',
-          payload: {
-            level: data.success ? 'success' : 'error',
-            message: data.success
-              ? `✓ ${data.distributedCount}개 디바이스 배분`
-              : `배분 실패: ${data.reason || '알 수 없는 오류'}`,
-          },
-        });
+        if (data.success) {
+          addLogInternal('success', `✅ ${data.distributedCount}개 디바이스에 배분`, { category: 'video' });
+        } else {
+          addLogInternal('error', `❌ 배분 실패: ${data.reason || '알 수 없는 오류'}`, { category: 'video' });
+        }
         break;
       }
 
       case 'DISTRIBUTION_FAILED': {
-        dispatch({
-          type: 'ADD_LOG',
-          payload: {
-            level: 'error',
-            message: `배분 실패: ${data.reason || '활성 디바이스 없음'}`,
-          },
-        });
+        addLogInternal('error', `❌ 배분 실패: ${data.reason || '활성 디바이스 없음'}`, { category: 'video' });
         break;
       }
 
       case 'LOG': {
-        dispatch({
-          type: 'ADD_LOG',
-          payload: {
-            level: data.level as LogEntry['level'],
-            message: data.message as string,
-            nodeId: data.nodeId as string | undefined,
+        // 서버에서 보내는 로그 (category 포함)
+        addLogInternal(
+          data.level as LogEntry['level'],
+          data.message as string,
+          { 
+            nodeId: data.nodeId as string | undefined, 
             deviceId: data.deviceId as string | undefined,
-          },
-        });
+            category: data.category as LogEntry['category'] || 'system',
+          }
+        );
+        break;
+      }
+
+      case 'PONG': {
+        // 핑퐁 응답 - 로그 안 함
         break;
       }
 
       default:
+        // 알 수 없는 메시지 타입 - 디버그용
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Unknown WS message:', data.type, data);
+        }
         break;
     }
-  }, []);
+  }, [addLogInternal]);
 
   // ─────────────────────────────────────────
   // 데이터 변환
@@ -834,7 +814,7 @@ export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
   const convertDeviceData = (raw: Record<string, unknown>, nodeId: string): Device => ({
     id: raw.id as string,
     serial: raw.serial as string || raw.id as string,
-    name: raw.name as string || `Device ${raw.id}`,
+    name: raw.name as string || `Device ${(raw.id as string).slice(-4)}`,
     model: raw.model as string || 'Unknown',
     status: (raw.status as DeviceStatus) || 'idle',
     wallet: (raw.wallet as number) || 0,
@@ -864,15 +844,12 @@ export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
     };
 
     dispatch({ type: 'ADD_QUEUED_VIDEO', payload: newVideo });
-    dispatch({
-      type: 'ADD_LOG',
-      payload: { level: 'info', message: `영상 등록: "${video.title}"` },
-    });
+    addLogInternal('info', `📋 영상 등록: "${video.title}"`, { category: 'video' });
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'ADD_VIDEO', video: newVideo }));
     }
-  }, []);
+  }, [addLogInternal]);
 
   const updateVideo = useCallback((video: Partial<QueuedVideo> & { id: string }) => {
     dispatch({ type: 'UPDATE_QUEUED_VIDEO', payload: video });
@@ -897,11 +874,8 @@ export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
 
     dispatch({ type: 'REMOVE_QUEUED_VIDEO', payload: videoId });
     dispatch({ type: 'ADD_COMPLETED_VIDEO', payload: completedVideo });
-    dispatch({
-      type: 'ADD_LOG',
-      payload: { level: 'success', message: `완료: "${video.title}" (${stats.successCount}회)` },
-    });
-  }, [state.queuedVideos]);
+    addLogInternal('success', `🎉 완료: "${video.title}" (${stats.successCount}회 시청)`, { category: 'video' });
+  }, [state.queuedVideos, addLogInternal]);
 
   const completeVideoFromWs = useCallback((videoId: string, stats: { successCount: number; errorCount: number }) => {
     completeVideo(videoId, stats);
@@ -919,40 +893,34 @@ export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
         targetViews,
         options,
       }));
-
-      dispatch({
-        type: 'ADD_LOG',
-        payload: { level: 'info', message: `영상 주입: "${video.title}" (${targetViews}회)` },
-      });
+      addLogInternal('info', `📤 영상 주입: "${video.title}" (목표: ${targetViews}회)`, { category: 'video' });
     } else {
-      dispatch({
-        type: 'ADD_LOG',
-        payload: { level: 'error', message: 'Bridge 연결 안됨' },
-      });
+      addLogInternal('error', '❌ Bridge 연결 안됨 - 영상 주입 실패', { category: 'connection' });
     }
-  }, []);
+  }, [addLogInternal]);
 
   const refreshDevices = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'REFRESH_DEVICES' }));
-      dispatch({ type: 'ADD_LOG', payload: { level: 'info', message: '디바이스 새로고침' } });
+      addLogInternal('info', '🔄 디바이스 새로고침 요청', { category: 'device' });
+    } else {
+      addLogInternal('warn', '⚠️ Bridge 연결 안됨', { category: 'connection' });
     }
-  }, []);
+  }, [addLogInternal]);
 
   const sendCommand = useCallback((deviceId: string, command: string, params: Record<string, unknown> = {}) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'SEND_COMMAND',
-        deviceId,
-        command,
-        params,
-      }));
+      wsRef.current.send(JSON.stringify({ type: 'SEND_COMMAND', deviceId, command, params }));
     }
   }, []);
 
-  const addLog = useCallback((level: LogEntry['level'], message: string, nodeId?: string, deviceId?: string) => {
-    dispatch({ type: 'ADD_LOG', payload: { level, message, nodeId, deviceId } });
-  }, []);
+  const addLog = useCallback((
+    level: LogEntry['level'], 
+    message: string, 
+    options?: { nodeId?: string; deviceId?: string; category?: LogEntry['category'] }
+  ) => {
+    addLogInternal(level, message, options);
+  }, [addLogInternal]);
 
   const clearLogs = useCallback(() => {
     dispatch({ type: 'CLEAR_LOGS' });
@@ -978,9 +946,19 @@ export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
   // ─────────────────────────────────────────
 
   useEffect(() => {
+    // 컴포넌트 마운트 시 연결
     connect();
-    return () => disconnect();
-  }, [connect, disconnect]);
+    
+    // 컴포넌트 언마운트 시 정리
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close(1000, 'Component unmount');
+      }
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─────────────────────────────────────────
   // Context Value
@@ -988,30 +966,20 @@ export function NodeProvider({ children, wsEndpoint }: NodeProviderProps) {
 
   const contextValue: NodeContextValue = {
     state,
-    
-    // 노드
     nodes: Array.from(state.nodes.values()),
     getNodeById,
     getOnlineNodes,
-    
-    // 디바이스
     devices: Array.from(state.devices.values()),
     getDeviceById,
     getDevicesByNodeId,
     getIdleDevices,
     getBusyDevices,
-    
-    // 비디오
     addVideo,
     updateVideo,
     completeVideo,
     injectVideo,
-    
-    // 로그
     addLog,
     clearLogs,
-    
-    // 연결
     connect,
     disconnect,
     refreshDevices,

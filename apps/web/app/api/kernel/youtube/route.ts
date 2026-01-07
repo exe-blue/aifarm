@@ -110,7 +110,17 @@ async function waitForYouTubeLoad(page: unknown): Promise<void> {
 async function clickLike(page: unknown, videoId: string): Promise<ActionResult> {
   const p = page as {
     goto: (url: string) => Promise<void>;
-    locator: (selector: string) => { click: () => Promise<void>; getAttribute: (attr: string) => Promise<string | null>; isVisible: () => Promise<boolean> };
+    locator: (selector: string) => { 
+      first: () => { click: () => Promise<void>; getAttribute: (attr: string) => Promise<string | null> };
+      click: () => Promise<void>; 
+      getAttribute: (attr: string) => Promise<string | null>; 
+      isVisible: () => Promise<boolean>;
+    };
+    getByRole: (role: string, options: { name: RegExp }) => { 
+      first: () => { click: () => Promise<void>; getAttribute: (attr: string) => Promise<string | null> };
+      click: () => Promise<void>; 
+      getAttribute: (attr: string) => Promise<string | null>;
+    };
     waitForTimeout: (ms: number) => Promise<void>;
   };
   
@@ -121,8 +131,9 @@ async function clickLike(page: unknown, videoId: string): Promise<ActionResult> 
     await p.goto(`https://www.youtube.com/watch?v=${videoId}`);
     await randomDelay(2000, 4000);
     
-    // 좋아요 버튼 찾기 (YouTube의 좋아요 버튼 셀렉터)
-    const likeButton = p.locator('ytd-menu-renderer button[aria-label*="좋아요"], ytd-menu-renderer button[aria-label*="like"]');
+    // 좋아요 버튼 찾기 - "like this video" 텍스트를 포함하는 첫 번째 버튼
+    // YouTube의 버튼은 "like this video along with X other people" 형식
+    const likeButton = p.getByRole('button', { name: /like this video along with/i }).first();
     
     // 이미 좋아요했는지 확인
     const ariaPressed = await likeButton.getAttribute('aria-pressed');
@@ -491,5 +502,3 @@ export async function GET() {
       : 'KERNEL_API_KEY가 설정되지 않았습니다',
   });
 }
-
-

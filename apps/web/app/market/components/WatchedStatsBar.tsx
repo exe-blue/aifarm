@@ -16,15 +16,28 @@ interface WatchedStatsBarProps {
   isDark: boolean;
 }
 
+// 시간 포맷팅 함수 (일관된 형식)
+function formatTime(date: Date): string {
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const seconds = date.getSeconds().toString().padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
+}
+
 export function WatchedStatsBar({
   stats,
   queuedCount,
   runningCount,
   isDark,
 }: WatchedStatsBarProps) {
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // 클라이언트 마운트 후에만 시간 표시 (hydration 오류 방지)
+  const [mounted, setMounted] = useState(false);
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+    setCurrentTime(new Date());
+    
     const interval = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -83,10 +96,12 @@ export function WatchedStatsBar({
         )}
       </div>
 
-      {/* 현재 시간 */}
+      {/* 현재 시간 - 클라이언트에서만 렌더링 */}
       <div className="flex items-center gap-2 text-xs font-mono text-neutral-500">
         <Clock className="w-3 h-3" />
-        <span>{currentTime.toLocaleTimeString()}</span>
+        <span suppressHydrationWarning>
+          {mounted && currentTime ? formatTime(currentTime) : '--:--:--'}
+        </span>
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ interface NodeStatusBarProps {
   gatewayNode: GatewayNode | null;
   devices: Device[];
   connectionStatus: ConnectionStatus;
+  reconnectAttempt: number;
   laixiConnected: boolean;
   isDark: boolean;
   onReconnect?: () => void;
@@ -24,6 +25,7 @@ export function NodeStatusBar({
   gatewayNode,
   devices,
   connectionStatus,
+  reconnectAttempt,
   laixiConnected,
   isDark,
   onReconnect,
@@ -60,11 +62,11 @@ export function NodeStatusBar({
       case 'connected':
         return 'BRIDGE 연결됨';
       case 'connecting':
-        return '연결 중...';
+        return reconnectAttempt > 0 ? `재연결 중 (${reconnectAttempt}/20)` : '연결 중...';
       case 'error':
         return '연결 오류';
       default:
-        return '연결 안됨';
+        return reconnectAttempt > 0 ? `대기 중 (${reconnectAttempt}/20)` : '연결 안됨';
     }
   };
 

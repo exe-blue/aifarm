@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   Home as HomeIcon, TrendingUp, BookOpen, Briefcase, Library, User,
-  Moon, Sun, Menu, X, ChevronRight
+  Moon, Sun, Menu, X, ChevronRight, Tv
 } from 'lucide-react';
 
 // ============================================
@@ -24,7 +24,6 @@ interface MenuItem {
   href?: string;
   available: boolean;
   description?: string;
-  isExternal?: boolean;
 }
 
 interface HeaderProps {
@@ -43,7 +42,8 @@ interface HeaderProps {
 
 const MENU_ITEMS: MenuItem[] = [
   { id: 'home', label: 'HOME', icon: HomeIcon, href: '/', available: true },
-  { id: 'market', label: 'MARKET', icon: TrendingUp, href: '/market', available: true, isExternal: true, description: '경제 | AI 노드 관제' },
+  { id: 'market', label: 'MARKET', icon: TrendingUp, href: '/market', available: true, description: '경제 | AI 노드 관제' },
+  { id: 'infra', label: 'INFRA', icon: Tv, href: '/infra', available: true, description: '채널 편성표' },
   { id: 'philosophy', label: 'PHILOSOPHY', icon: BookOpen, available: false, description: '철학, 선언, 권리와 의무, 비전' },
   { id: 'service', label: 'SERVICE', icon: Briefcase, available: false, description: '서비스, 가격' },
   { id: 'knowledge', label: 'KNOWLEDGE', icon: Library, available: false, description: '아카이브, 루온, 용어' },
@@ -89,7 +89,7 @@ export function Header({
     setMobileMenuOpen(false);
     
     // 내부 뷰 변경
-    if (onViewChange && !item.isExternal && !item.href) {
+    if (onViewChange && !item.href) {
       onViewChange(item.id);
     }
   }, [onViewChange]);
@@ -107,7 +107,7 @@ export function Header({
         fixed top-0 left-0 right-0 z-50 transition-all duration-300
         ${scrolled 
           ? `${isDark 
-              ? 'bg-[#050505]/95 border-b border-white/10' 
+              ? 'bg-[#0A0A0A]/95 border-b border-white/10' 
               : 'bg-white/95 border-b border-neutral-200 shadow-sm'
             } backdrop-blur-xl py-2` 
           : 'py-4'
@@ -120,12 +120,8 @@ export function Header({
             className="flex items-center gap-2 group"
             onClick={() => setMobileMenuOpen(false)}
           >
-            <div className="w-8 h-8 bg-[#FFCC00] flex items-center justify-center rounded-sm font-bold text-black font-mono text-lg shadow-[0_0_10px_rgba(255,204,0,0.4)] transition-transform group-hover:scale-105">
-              DA
-            </div>
-            <span className="font-mono text-lg font-bold tracking-tighter hidden sm:inline">
-              DoAi.<span className={isDark ? 'text-neutral-500 group-hover:text-neutral-300' : 'text-neutral-400 group-hover:text-neutral-600'}>ME</span>
-            </span>
+            <span className="text-2xl font-bold text-[#FFCC00]">DoAi</span>
+            <span className={`text-2xl font-light ${isDark ? 'text-white' : 'text-black'}`}>.Me</span>
           </Link>
 
           {/* Desktop Menu */}
@@ -224,27 +220,22 @@ function MenuButton({ item, isActive, isDark, onClick }: MenuButtonProps) {
         href={item.href}
         onClick={onClick}
         className={`
-          relative px-3 lg:px-4 py-2 text-xs font-mono tracking-wider rounded-full transition-all
+          relative px-3 lg:px-4 py-2 text-xs font-medium tracking-wider rounded-full transition-all
           flex items-center gap-1.5
           ${isActive 
             ? `${isDark 
-                ? 'text-yellow-400 bg-yellow-400/10' 
+                ? 'text-[#FFCC00] bg-[#FFCC00]/10' 
                 : 'text-yellow-600 bg-yellow-400/20'
               } font-bold` 
-            : item.id === 'market'
-              ? `${isDark ? 'text-[#FFCC00]' : 'text-yellow-600'} font-bold`
-              : `${isDark 
-                  ? 'text-neutral-400 hover:text-neutral-200' 
-                  : 'text-neutral-600 hover:text-neutral-900'
-                }`
+            : `${isDark 
+                ? 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5' 
+                : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/5'
+              }`
           }
         `}
       >
-        <Icon className="w-3.5 h-3.5 hidden lg:block" />
+        <Icon className="w-3.5 h-3.5" />
         {item.label}
-        {item.id === 'market' && (
-          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-        )}
       </Link>
     );
   }
@@ -255,13 +246,12 @@ function MenuButton({ item, isActive, isDark, onClick }: MenuButtonProps) {
       <button
         disabled
         className={`
-          relative px-3 lg:px-4 py-2 text-xs font-mono tracking-wider rounded-full
+          relative px-3 lg:px-4 py-2 text-xs font-medium tracking-wider rounded-full
           ${isDark ? 'text-neutral-600' : 'text-neutral-400'}
           opacity-40 cursor-not-allowed
         `}
       >
         {item.label}
-        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
       </button>
     );
   }
@@ -271,15 +261,15 @@ function MenuButton({ item, isActive, isDark, onClick }: MenuButtonProps) {
     <button
       onClick={onClick}
       className={`
-        relative px-3 lg:px-4 py-2 text-xs font-mono tracking-wider rounded-full transition-all
+        relative px-3 lg:px-4 py-2 text-xs font-medium tracking-wider rounded-full transition-all
         ${isActive 
           ? `${isDark 
-              ? 'text-yellow-400 bg-yellow-400/10' 
+              ? 'text-[#FFCC00] bg-[#FFCC00]/10' 
               : 'text-yellow-600 bg-yellow-400/20'
             } font-bold` 
           : `${isDark 
-              ? 'text-neutral-400 hover:text-neutral-200' 
-              : 'text-neutral-600 hover:text-neutral-900'
+              ? 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5' 
+              : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/5'
             }`
         }
       `}
@@ -315,8 +305,8 @@ function MobileMenu({ isOpen, isDark, menuItems, isActive, onItemClick, onClose 
 
       {/* Menu Panel */}
       <div className={`
-        fixed top-14 left-0 right-0 bottom-0 z-40 md:hidden overflow-y-auto
-        ${isDark ? 'bg-[#050505]' : 'bg-white'}
+        fixed top-16 left-0 right-0 bottom-0 z-40 md:hidden overflow-y-auto
+        ${isDark ? 'bg-[#0A0A0A]' : 'bg-white'}
       `}>
         <div className="p-4 space-y-2">
           {menuItems.map(item => {
@@ -340,7 +330,7 @@ function MobileMenu({ isOpen, isDark, menuItems, isActive, onItemClick, onClose 
                   <div className="flex items-center gap-3">
                     <Icon className={`w-5 h-5 ${active ? 'text-[#FFCC00]' : isDark ? 'text-neutral-500' : 'text-neutral-600'}`} />
                     <div>
-                      <div className={`font-mono text-sm font-bold ${active ? 'text-[#FFCC00]' : ''}`}>
+                      <div className={`font-medium text-sm ${active ? 'text-[#FFCC00]' : ''}`}>
                         {item.label}
                       </div>
                       {item.description && (
@@ -373,7 +363,7 @@ function MobileMenu({ isOpen, isDark, menuItems, isActive, onItemClick, onClose 
                 <div className="flex items-center gap-3">
                   <Icon className={`w-5 h-5 ${active ? 'text-[#FFCC00]' : isDark ? 'text-neutral-500' : 'text-neutral-600'}`} />
                   <div className="text-left">
-                    <div className={`font-mono text-sm font-bold ${active ? 'text-[#FFCC00]' : ''}`}>
+                    <div className={`font-medium text-sm ${active ? 'text-[#FFCC00]' : ''}`}>
                       {item.label}
                       {!item.available && (
                         <span className="ml-2 text-xs text-purple-400 font-normal">준비중</span>
@@ -397,4 +387,3 @@ function MobileMenu({ isOpen, isDark, menuItems, isActive, onItemClick, onClose 
     </>
   );
 }
-

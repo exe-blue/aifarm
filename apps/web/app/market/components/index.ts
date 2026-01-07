@@ -9,5 +9,4 @@ export { InjectionPanel } from './InjectionPanel';
 export { QueuePanel } from './QueuePanel';
 export { LogsPanel } from './LogsPanel';
 export { CompletedPanel } from './CompletedPanel';
-export { SubscribedChannelsPanel } from './SubscribedChannelsPanel';
-
+// SubscribedChannelsPanel은 Infra 페이지로 이동됨
