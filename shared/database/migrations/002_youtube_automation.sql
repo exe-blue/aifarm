@@ -14,6 +14,18 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =====================================================
+-- 공통 트리거 함수: updated_at 자동 갱신
+-- 모든 테이블에서 UPDATE 시 updated_at을 현재 시간으로 설정
+-- =====================================================
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
 -- 1. 영상 대기열 테이블
 -- 등록 소스: channel_api, direct, ai_generated
 -- =====================================================
