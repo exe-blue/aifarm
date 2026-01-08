@@ -47,9 +47,6 @@ CREATE TABLE IF NOT EXISTS video_queue (
     
     -- 예약 기능
     scheduled_at TIMESTAMP WITH TIME ZONE,   -- NULL이면 즉시 실행 가능
-    is_ready BOOLEAN GENERATED ALWAYS AS (
-        scheduled_at IS NULL OR scheduled_at <= CURRENT_TIMESTAMP
-    ) STORED,
     
     -- 실행 설정
     target_device_percent FLOAT DEFAULT 0.5 CHECK (target_device_percent > 0 AND target_device_percent <= 1.0),
@@ -91,7 +88,7 @@ CREATE TABLE IF NOT EXISTS video_queue (
 COMMENT ON TABLE video_queue IS '영상 대기열 - 시청 작업 관리';
 COMMENT ON COLUMN video_queue.source IS 'channel_api=채널에서 가져옴, direct=직접등록, ai_generated=AI검색어';
 COMMENT ON COLUMN video_queue.target_device_percent IS '사용할 디바이스 비율 (0.5 = 50%)';
-COMMENT ON COLUMN video_queue.is_ready IS '실행 가능 여부 (예약 시간 체크)';
+COMMENT ON COLUMN video_queue.scheduled_at IS 'NULL이면 즉시 실행 가능, 값이 있으면 해당 시간 이후 실행';
 
 -- =====================================================
 -- 2. 댓글 풀 테이블 (확장)
@@ -174,12 +171,7 @@ CREATE TABLE IF NOT EXISTS execution_logs (
     -- 시청 데이터
     watch_duration_seconds INTEGER CHECK (watch_duration_seconds >= 0),
     target_duration_seconds INTEGER,
-    watch_percent FLOAT GENERATED ALWAYS AS (
-        CASE WHEN target_duration_seconds > 0 
-             THEN ROUND((watch_duration_seconds::float / target_duration_seconds * 100)::numeric, 2)
-             ELSE 0 
-        END
-    ) STORED,
+    watch_percent FLOAT,  -- 애플리케이션에서 계산: (watch_duration / target_duration * 100)
     
     -- 인터랙션 결과
     did_like BOOLEAN DEFAULT FALSE,
@@ -295,7 +287,7 @@ ON CONFLICT (code) DO UPDATE SET description = EXCLUDED.description;
 -- video_queue
 CREATE INDEX IF NOT EXISTS idx_video_queue_status ON video_queue(status);
 CREATE INDEX IF NOT EXISTS idx_video_queue_priority ON video_queue(priority DESC);
-CREATE INDEX IF NOT EXISTS idx_video_queue_ready ON video_queue(is_ready, status) WHERE is_ready = TRUE;
+CREATE INDEX IF NOT EXISTS idx_video_queue_ready ON video_queue(status, scheduled_at) WHERE status IN ('pending', 'ready');
 CREATE INDEX IF NOT EXISTS idx_video_queue_scheduled ON video_queue(scheduled_at) WHERE status = 'pending';
 CREATE INDEX IF NOT EXISTS idx_video_queue_youtube_id ON video_queue(youtube_video_id);
 CREATE INDEX IF NOT EXISTS idx_video_queue_source ON video_queue(source);
@@ -520,7 +512,7 @@ BEGIN
         calculate_interaction_probability(vq.view_count, vq.comment_probability)
     FROM video_queue vq
     WHERE vq.status IN ('ready', 'pending')
-      AND vq.is_ready = TRUE
+      AND (vq.scheduled_at IS NULL OR vq.scheduled_at <= CURRENT_TIMESTAMP)
       AND vq.completed_executions < vq.target_executions
       AND (vq.retry_count < vq.max_retries OR vq.failed_executions = 0)
     ORDER BY vq.priority DESC, vq.created_at ASC
