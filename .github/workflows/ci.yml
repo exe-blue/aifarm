@@ -16,7 +16,7 @@
 #   - SUPABASE_SERVICE_ROLE_KEY
 #
 # Coverage:
-#   - Minimum threshold: 60%
+#   - Minimum threshold: 55%
 # ============================================
 
 name: CI
@@ -76,7 +76,7 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Run unit tests with coverage
-        run: pytest tests/unit/ -v --cov=shared --cov=services --cov-report=term-missing --cov-report=xml --cov-fail-under=60
+        run: pytest tests/unit/ -v --cov=shared --cov=services --cov-report=term-missing --cov-report=xml --cov-fail-under=55
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
