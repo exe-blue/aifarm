@@ -8,8 +8,30 @@
 
 import { useParams, Link } from 'react-router-dom';
 import useSWR from 'swr';
+import { logger } from '@/lib/logger';
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+// 매직 넘버 방지용 상수
+const DEVICE_REFRESH_INTERVAL_MS = 5_000;
+
+async function fetcher(url: string): Promise<unknown> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    logger.error('Device API 요청 실패', {
+      url,
+      status: res.status,
+      errorText: errorText || undefined
+    });
+    throw new Error(errorText || `요청 실패 (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+function fireAndForget(promise: Promise<unknown>, context: string) {
+  void promise.catch((e) => {
+    logger.error(`${context} 실패`, { error: e instanceof Error ? e.message : String(e) });
+  });
+}
 
 export default function DeviceDetail() {
   const { deviceId } = useParams<{ deviceId: string }>();
@@ -17,13 +39,13 @@ export default function DeviceDetail() {
   const { data, error, isLoading } = useSWR(
     deviceId ? `/api/devices/${encodeURIComponent(deviceId)}` : null,
     fetcher,
-    { refreshInterval: 5000 }
+    { refreshInterval: DEVICE_REFRESH_INTERVAL_MS }
   );
   
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-900">
-        <div className="text-gray-400 text-lg">🔄 Loading device...</div>
+        <div className="text-gray-400 text-lg">🔄 디바이스 로딩 중...</div>
       </div>
     );
   }
@@ -31,8 +53,8 @@ export default function DeviceDetail() {
   if (error || !data?.success) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-gray-900 gap-4">
-        <div className="text-red-400 text-lg">❌ Device not found</div>
-        <Link to="/" className="text-blue-400 hover:underline">← Back to Dashboard</Link>
+        <div className="text-red-400 text-lg">❌ 디바이스를 찾을 수 없습니다</div>
+        <Link to="/" className="text-blue-400 hover:underline">← 대시보드로</Link>
       </div>
     );
   }
@@ -192,21 +214,25 @@ export default function DeviceDetail() {
   );
   
   function sendControl(keycode: string) {
-    fetch(`/api/control/${encodeURIComponent(device.serial)}/key`, {
+    const url = `/api/control/${encodeURIComponent(device.serial)}/key`;
+    fireAndForget(fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ keycode })
-    });
+    }), '디바이스 키 입력');
   }
   
   function restartAutoX() {
-    fetch(`/api/control/${encodeURIComponent(device.serial)}/restart-autox`, {
+    const url = `/api/control/${encodeURIComponent(device.serial)}/restart-autox`;
+    fireAndForget(fetch(url, {
       method: 'POST'
-    });
+    }), 'AutoX 재시작');
   }
 }
 
-function MetricBar({ label, value, color }: { label: string; value: number; color: string }) {
+type MetricColor = 'green' | 'blue' | 'purple' | 'red';
+
+function MetricBar({ label, value, color }: { label: string; value: number; color: MetricColor }) {
   const colors = {
     green: 'bg-green-500',
     blue: 'bg-blue-500',
