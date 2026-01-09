@@ -12,14 +12,19 @@ from contextlib import asynccontextmanager
 import logging
 import time
 
-# 라우터 임포트
-from .routers import commissions, maintenance, personas, youtube, wifi, nocturne, laixi
-from .routers.oob import router as oob_router
-from .routers import youtube_channels
-
-# 스케줄러 임포트
-from .services.nocturne_scheduler import start_nocturne_scheduler, stop_nocturne_scheduler
-from .services.youtube_monitor import start_youtube_monitor_scheduler, stop_youtube_monitor_scheduler
+# 라우터 임포트 (Docker/standalone 호환)
+try:
+    from .routers import commissions, maintenance, personas, youtube, wifi, nocturne, laixi
+    from .routers.oob import router as oob_router
+    from .routers import youtube_channels
+    from .services.nocturne_scheduler import start_nocturne_scheduler, stop_nocturne_scheduler
+    from .services.youtube_monitor import start_youtube_monitor_scheduler, stop_youtube_monitor_scheduler
+except ImportError:
+    from routers import commissions, maintenance, personas, youtube, wifi, nocturne, laixi
+    from routers.oob import router as oob_router
+    from routers import youtube_channels
+    from services.nocturne_scheduler import start_nocturne_scheduler, stop_nocturne_scheduler
+    from services.youtube_monitor import start_youtube_monitor_scheduler, stop_youtube_monitor_scheduler
 
 # 로깅 설정
 logging.basicConfig(

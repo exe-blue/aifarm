@@ -12,17 +12,30 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 import logging
 
-from ..models.nocturne import (
-    NocturneLine,
-    NocturneLineCreate,
-    NocturneLineResponse,
-    NocturneLineListResponse,
-)
-from ..services.nocturne_service import (
-    generate_nocturne_line,
-    get_nocturne_history,
-    get_nocturne_by_date,
-)
+try:
+    from ..models.nocturne import (
+        NocturneLine,
+        NocturneLineCreate,
+        NocturneLineResponse,
+        NocturneLineListResponse,
+    )
+    from ..services.nocturne_service import (
+        generate_nocturne_line,
+        get_nocturne_history,
+        get_nocturne_by_date,
+    )
+except ImportError:
+    from models.nocturne import (
+        NocturneLine,
+        NocturneLineCreate,
+        NocturneLineResponse,
+        NocturneLineListResponse,
+    )
+    from services.nocturne_service import (
+        generate_nocturne_line,
+        get_nocturne_history,
+        get_nocturne_by_date,
+    )
 
 logger = logging.getLogger("nocturne_api")
 
@@ -217,7 +230,10 @@ async def get_latest_nocturne():
 async def get_random_nocturne():
     """랜덤 Nocturne Line (데모용)"""
     import random
-    from ..services.nocturne_service import _generator, DailyMetrics
+    try:
+        from ..services.nocturne_service import _generator, DailyMetrics
+    except ImportError:
+        from services.nocturne_service import _generator, DailyMetrics
     
     try:
         # 랜덤 날짜

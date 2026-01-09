@@ -18,7 +18,10 @@ from datetime import datetime, timezone
 from loguru import logger
 import httpx
 
-from ..db import get_supabase_client
+try:
+    from ..db import get_supabase_client
+except ImportError:
+    from db import get_supabase_client
 
 
 class YouTubeChannelMonitor:

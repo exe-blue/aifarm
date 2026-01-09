@@ -17,12 +17,20 @@ from datetime import datetime, date, timedelta
 from typing import Optional
 from uuid import uuid4
 
-from ..models.nocturne import (
-    NocturneLine,
-    DailyMetrics,
-    PoeticElement,
-    MoodTone,
-)
+try:
+    from ..models.nocturne import (
+        NocturneLine,
+        DailyMetrics,
+        PoeticElement,
+        MoodTone,
+    )
+except ImportError:
+    from models.nocturne import (
+        NocturneLine,
+        DailyMetrics,
+        PoeticElement,
+        MoodTone,
+    )
 
 logger = logging.getLogger("nocturne_generator")
 

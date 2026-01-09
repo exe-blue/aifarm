@@ -17,13 +17,22 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 import logging
 
-from ..models.persona_search import (
-    IdleSearchRequest,
-    IdleSearchResponse,
-    SearchHistoryResponse,
-    PersonaSearchProfileResponse,
-)
-from ..services.persona_search_service import get_persona_search_service
+try:
+    from ..models.persona_search import (
+        IdleSearchRequest,
+        IdleSearchResponse,
+        SearchHistoryResponse,
+        PersonaSearchProfileResponse,
+    )
+    from ..services.persona_search_service import get_persona_search_service
+except ImportError:
+    from models.persona_search import (
+        IdleSearchRequest,
+        IdleSearchResponse,
+        SearchHistoryResponse,
+        PersonaSearchProfileResponse,
+    )
+    from services.persona_search_service import get_persona_search_service
 
 logger = logging.getLogger("personas_api")
 

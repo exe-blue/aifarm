@@ -11,14 +11,24 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 
-from ..services.oob import (
-    HealthCollector,
-    NodeHealth,
-    RuleEngine,
-    RecoveryAction,
-    RecoveryDispatcher,
-    BoxClient,
-)
+try:
+    from ..services.oob import (
+        HealthCollector,
+        NodeHealth,
+        RuleEngine,
+        RecoveryAction,
+        RecoveryDispatcher,
+        BoxClient,
+    )
+except ImportError:
+    from services.oob import (
+        HealthCollector,
+        NodeHealth,
+        RuleEngine,
+        RecoveryAction,
+        RecoveryDispatcher,
+        BoxClient,
+    )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/oob", tags=["OOB Management"])

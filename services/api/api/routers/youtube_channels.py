@@ -11,7 +11,10 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from loguru import logger
 
-from ..services.youtube_monitor import get_youtube_monitor, youtube_scan_job
+try:
+    from ..services.youtube_monitor import get_youtube_monitor, youtube_scan_job
+except ImportError:
+    from services.youtube_monitor import get_youtube_monitor, youtube_scan_job
 
 
 router = APIRouter(

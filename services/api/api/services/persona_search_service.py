@@ -34,10 +34,27 @@ except ImportError:
     HAS_ANTHROPIC = False
     AsyncAnthropic = None
 
-# Supabase 클라이언트
-import sys
-sys.path.insert(0, '/mnt/d/exe.blue/aifarm')
-from shared.supabase_client import get_client
+# Supabase 클라이언트 (Docker/standalone 호환)
+try:
+    from ..db import get_supabase_client as get_client
+except ImportError:
+    try:
+        from db import get_supabase_client as get_client
+    except ImportError:
+        import sys
+        import os
+        # 로컬 개발 환경 fallback
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        sys.path.insert(0, project_root)
+        try:
+            from shared.supabase_client import get_client
+        except ImportError:
+            # 최후의 fallback: 직접 구현
+            from supabase import create_client
+            def get_client():
+                url = os.getenv("SUPABASE_URL")
+                key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+                return create_client(url, key)
 
 logger = logging.getLogger("persona_search_service")
 

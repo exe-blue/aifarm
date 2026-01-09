@@ -10,7 +10,10 @@ Database Function 호출을 위한 래퍼
 
 from typing import Optional, Any
 from loguru import logger
-from db import get_supabase_client
+try:
+    from ..db import get_supabase_client
+except ImportError:
+    from db import get_supabase_client
 
 
 class SupabaseRPC:

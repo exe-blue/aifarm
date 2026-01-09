@@ -14,7 +14,10 @@ from datetime import datetime
 from enum import IntEnum
 import logging
 
-from ..services.supabase_rpc import get_supabase_client
+try:
+    from ..services.supabase_rpc import get_supabase_client
+except ImportError:
+    from services.supabase_rpc import get_supabase_client
 
 # 로거 설정
 logger = logging.getLogger("youtube_api")

@@ -15,12 +15,20 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from loguru import logger
 
-from ..services.wifi_service import (
-    WifiService,
-    get_wifi_service,
-    DeviceWifiStatus,
-    WifiConnectionResult
-)
+try:
+    from ..services.wifi_service import (
+        WifiService,
+        get_wifi_service,
+        DeviceWifiStatus,
+        WifiConnectionResult
+    )
+except ImportError:
+    from services.wifi_service import (
+        WifiService,
+        get_wifi_service,
+        DeviceWifiStatus,
+        WifiConnectionResult
+    )
 
 
 router = APIRouter(prefix="/api/v1/wifi", tags=["wifi"])
