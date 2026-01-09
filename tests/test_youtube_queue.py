@@ -262,7 +262,11 @@ class TestQueueSummary:
 
 
 # 통합 테스트 (DB 연결 필요)
-@pytest.mark.skipif(not os.getenv("SUPABASE_URL"), reason="SUPABASE_URL 환경변수 필요")
+from tests.conftest import SKIP_INTEGRATION_TESTS
+
+
+@pytest.mark.skipif(SKIP_INTEGRATION_TESTS, reason="실제 Supabase 자격 증명 필요")
+@pytest.mark.integration
 class TestYouTubeQueueServiceIntegration:
     """통합 테스트 (DB 연결 필요)"""
 
