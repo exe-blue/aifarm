@@ -339,10 +339,10 @@ class AlertManager:
                 json=payload,
             ) as response:
                 if response.status == 200:
-                    logger.info(f"Slack 알림 전송 성공: {title}")
+                    logger.info("Slack 알림 전송 성공: %s", title.replace("\n", "\\n"))
                     return True
                 else:
-                    logger.warning(f"Slack 알림 전송 실패: {response.status}")
+                    logger.warning("Slack 알림 전송 실패: %s", response.status)
                     return False
         except Exception as e:
             logger.error(f"Slack 알림 전송 오류: {e}")
@@ -388,10 +388,10 @@ class AlertManager:
                 json=payload,
             ) as response:
                 if response.status in (200, 204):
-                    logger.info(f"Discord 알림 전송 성공: {title}")
+                    logger.info("Discord 알림 전송 성공: %s", title.replace("\n", "\\n"))
                     return True
                 else:
-                    logger.warning(f"Discord 알림 전송 실패: {response.status}")
+                    logger.warning("Discord 알림 전송 실패: %s", response.status)
                     return False
         except Exception as e:
             logger.error(f"Discord 알림 전송 오류: {e}")
