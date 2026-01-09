@@ -73,7 +73,7 @@ class PersonaChecker {
     /**
      * 화면 캡처
      */
-    captureScreen() {
+    captureAndSaveScreen() {
         try {
             // AutoX.js 스크린샷
             const img = captureScreen();
