@@ -63,12 +63,9 @@ const videos = [
     }
 ];
 
-// ==================== 로그 함수 ====================
-
-function log(message) {
-    const timestamp = new Date().toLocaleTimeString();
-    console.log(`[${timestamp}] ${message}`);
-}
+// ==================== 로거 ====================
+const Logger = require('./modules/logger.js');
+const logger = Logger.createBootLogger({ deviceId: (device && device.serial) ? device.serial : 'SIMPLE', level: 'info' });
 
 // ==================== YouTube 자동화 함수 ====================
 
@@ -76,21 +73,21 @@ function log(message) {
  * YouTube 앱 실행
  */
 function launchYouTube() {
-    log('📱 YouTube 앱 실행...');
+    logger.info('📱 YouTube 앱 실행...');
     
     try {
         app.launch('com.google.android.youtube');
         sleep(3000);
         
         if (currentPackage() === 'com.google.android.youtube') {
-            log('✅ YouTube 앱 실행 성공');
+            logger.info('✅ YouTube 앱 실행 성공');
             return true;
         }
         
-        log('❌ YouTube 앱 실행 실패');
+        logger.error('❌ YouTube 앱 실행 실패');
         return false;
     } catch (e) {
-        log('❌ YouTube 앱 실행 예외: ' + e.message);
+        logger.error('❌ YouTube 앱 실행 예외', { error: e.message });
         return false;
     }
 }
@@ -99,13 +96,13 @@ function launchYouTube() {
  * 제목으로 검색
  */
 function searchByTitle(title) {
-    log('🔍 제목 검색: ' + title);
+    logger.info('🔍 제목 검색', { title });
     
     try {
         // 검색 버튼 클릭
         const searchButton = id("search").findOne(5000);
         if (!searchButton) {
-            log('❌ 검색 버튼 없음');
+            logger.error('❌ 검색 버튼 없음');
             return false;
         }
         
@@ -115,7 +112,7 @@ function searchByTitle(title) {
         // 검색창에 제목 입력
         const searchBox = className("android.widget.EditText").findOne(3000);
         if (!searchBox) {
-            log('❌ 검색창 없음');
+            logger.error('❌ 검색창 없음');
             return false;
         }
         
@@ -126,11 +123,11 @@ function searchByTitle(title) {
         KeyCode("KEYCODE_ENTER");
         sleep(3000);
         
-        log('✅ 검색 완료');
+        logger.info('✅ 검색 완료');
         return true;
         
     } catch (e) {
-        log('❌ 검색 실패: ' + e.message);
+        logger.error('❌ 검색 실패', { error: e.message });
         return false;
     }
 }
@@ -139,24 +136,24 @@ function searchByTitle(title) {
  * 첫 번째 영상 선택
  */
 function selectFirstVideo() {
-    log('🎯 첫 번째 영상 선택');
+    logger.info('🎯 첫 번째 영상 선택');
     
     try {
         // 검색 결과 첫 번째 썸네일 클릭
         const thumbnail = id("thumbnail").findOne(5000);
         if (!thumbnail) {
-            log('❌ 썸네일 없음');
+            logger.error('❌ 썸네일 없음');
             return false;
         }
         
         thumbnail.click();
         sleep(3000);
         
-        log('✅ 영상 선택 완료');
+        logger.info('✅ 영상 선택 완료');
         return true;
         
     } catch (e) {
-        log('❌ 영상 선택 실패: ' + e.message);
+        logger.error('❌ 영상 선택 실패', { error: e.message });
         return false;
     }
 }
@@ -165,13 +162,13 @@ function selectFirstVideo() {
  * 영상 시청 (30-70%)
  */
 function watchVideo(title) {
-    log('👀 영상 시청 시작: ' + title);
+    logger.info('👀 영상 시청 시작', { title });
     
     try {
         // 재생 확인 (player 존재)
         const player = id("player_view").findOne(3000);
         if (!player) {
-            log('⚠️  플레이어 없음, 그래도 시청 시도');
+            logger.warn('플레이어 없음, 그래도 시청 시도');
         }
         
         // 30-70% 랜덤 시청 (예: 100초 영상 → 30-70초)
@@ -179,14 +176,14 @@ function watchVideo(title) {
         const baseDuration = 60;  // 기본 60초 가정
         const watchDuration = Math.floor(baseDuration * watchPercentage);
         
-        log(`⏱️  ${watchPercentage.toFixed(0) * 100}% 시청 (${watchDuration}초)`);
+        logger.info('⏱️ 시청', { percent: Math.round(watchPercentage * 100), seconds: watchDuration });
         sleep(watchDuration * 1000);
         
-        log('✅ 시청 완료');
+        logger.info('✅ 시청 완료');
         return true;
         
     } catch (e) {
-        log('❌ 시청 실패: ' + e.message);
+        logger.error('❌ 시청 실패', { error: e.message });
         return false;
     }
 }
@@ -195,7 +192,7 @@ function watchVideo(title) {
  * YouTube 앱 닫기
  */
 function closeYouTube() {
-    log('🔚 YouTube 앱 닫기');
+    logger.info('🔚 YouTube 앱 닫기');
     
     try {
         // 뒤로가기 버튼 (홈으로)
@@ -208,11 +205,11 @@ function closeYouTube() {
         home();
         sleep(500);
         
-        log('✅ 앱 닫기 완료');
+        logger.info('✅ 앱 닫기 완료');
         return true;
         
     } catch (e) {
-        log('❌ 앱 닫기 실패: ' + e.message);
+        logger.error('❌ 앱 닫기 실패', { error: e.message });
         return false;
     }
 }
@@ -220,12 +217,12 @@ function closeYouTube() {
 // ==================== 메인 실행 ====================
 
 function main() {
-    log('╔════════════════════════════════════════════════════════╗');
-    log('║  Simple YouTube Automation                           ║');
-    log('║  제목 검색 → 30-70% 시청                              ║');
-    log('╚════════════════════════════════════════════════════════╝');
+    logger.info('╔════════════════════════════════════════════════════════╗');
+    logger.info('║  Simple YouTube Automation                           ║');
+    logger.info('║  제목 검색 → 30-70% 시청                              ║');
+    logger.info('╚════════════════════════════════════════════════════════╝');
     
-    log(`📋 총 ${videos.length}개 영상 처리 예정`);
+    logger.info('📋 영상 처리 시작', { total: videos.length });
     
     let successCount = 0;
     let failCount = 0;
@@ -233,22 +230,21 @@ function main() {
     for (let i = 0; i < videos.length; i++) {
         const video = videos[i];
         
-        log('');
-        log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        log(`📹 영상 ${i + 1}/${videos.length}: ${video.title}`);
-        log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        logger.info('📹 영상 처리', { index: i + 1, total: videos.length, title: video.title });
+        logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         try {
             // 1. YouTube 앱 실행
             if (!launchYouTube()) {
-                log('❌ 영상 처리 실패: YouTube 앱 실행 불가');
+                logger.error('❌ 영상 처리 실패: YouTube 앱 실행 불가');
                 failCount++;
                 continue;
             }
             
             // 2. 제목으로 검색
             if (!searchByTitle(video.title)) {
-                log('❌ 영상 처리 실패: 검색 불가');
+                logger.error('❌ 영상 처리 실패: 검색 불가');
                 failCount++;
                 closeYouTube();
                 continue;
@@ -256,7 +252,7 @@ function main() {
             
             // 3. 첫 번째 영상 선택
             if (!selectFirstVideo()) {
-                log('❌ 영상 처리 실패: 선택 불가');
+                logger.error('❌ 영상 처리 실패: 선택 불가');
                 failCount++;
                 closeYouTube();
                 continue;
@@ -264,7 +260,7 @@ function main() {
             
             // 4. 30-70% 시청
             if (!watchVideo(video.title)) {
-                log('❌ 영상 처리 실패: 시청 불가');
+                logger.error('❌ 영상 처리 실패: 시청 불가');
                 failCount++;
                 closeYouTube();
                 continue;
@@ -274,15 +270,15 @@ function main() {
             closeYouTube();
             
             successCount++;
-            log(`✅ 영상 ${i + 1} 처리 완료`);
+            logger.info('✅ 영상 처리 완료', { index: i + 1 });
             
             // 6. 영상 간 간격 (5-10초)
             const intervalSec = Math.floor(Math.random() * 5) + 5;
-            log(`⏰ ${intervalSec}초 대기...`);
+            logger.info('⏰ 대기', { seconds: intervalSec });
             sleep(intervalSec * 1000);
             
         } catch (e) {
-            log(`❌ 예상치 못한 에러: ${e.message}`);
+            logger.error('❌ 예상치 못한 에러', { error: e.message });
             failCount++;
             
             // 앱 강제 종료
@@ -296,18 +292,17 @@ function main() {
     }
     
     // 최종 결과
-    log('');
-    log('╔════════════════════════════════════════════════════════╗');
-    log('║  처리 완료                                            ║');
-    log('╚════════════════════════════════════════════════════════╝');
-    log(`✅ 성공: ${successCount}개`);
-    log(`❌ 실패: ${failCount}개`);
-    log(`📊 성공률: ${(successCount / videos.length * 100).toFixed(1)}%`);
+    logger.info('╔════════════════════════════════════════════════════════╗');
+    logger.info('║  처리 완료                                            ║');
+    logger.info('╚════════════════════════════════════════════════════════╝');
+    logger.info('✅ 성공', { count: successCount });
+    logger.info('❌ 실패', { count: failCount });
+    logger.info('📊 성공률', { percent: Number(((successCount / videos.length) * 100).toFixed(1)) });
 }
 
 // 실행
 try {
     main();
 } catch (e) {
-    log('❌ 치명적 에러: ' + e.message);
+    logger.error('❌ 치명적 에러', { error: e.message });
 }

@@ -37,11 +37,12 @@ const SleepPattern = require('./modules/sleep-pattern.js');
 // ==================== 설정 로드 ====================
 const ENV = 'dev'; // 'dev' 또는 'prod'
 let config;
+const bootLogger = Logger.createBootLogger({ deviceId: (device && device.serial) ? device.serial : 'unknown', level: 'info' });
 
 try {
     config = JSON.parse(files.read(`./config/${ENV}.json`));
 } catch (e) {
-    console.error('설정 파일 로드 실패:', e.message);
+    bootLogger.error('설정 파일 로드 실패', { error: e.message });
     config = {
         device: { id: device.serial || 'unknown' },
         server: { host: '127.0.0.1', port: 3100, protocol: 'http' },

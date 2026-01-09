@@ -7,6 +7,9 @@
 
 const http = require('http');
 const https = require('https');
+const Logger = require('../modules/logger.js');
+
+const logger = Logger.createBootLogger({ deviceId: 'SIMULATOR_001', level: 'debug' });
 
 // ==================== 설정 ====================
 const CONFIG = {
@@ -75,46 +78,46 @@ function makeRequest(method, path, data = null) {
 // ==================== API 함수 ====================
 
 async function healthCheck() {
-  console.log('[INFO] 헬스 체크 중...');
+  logger.info('헬스 체크 중...');
   try {
     const res = await makeRequest('GET', '/health');
     if (res.statusCode === 200) {
-      console.log('[SUCCESS] 서버 연결 정상', res.data);
+      logger.info('서버 연결 정상', { data: res.data });
       return true;
     } else {
-      console.log('[WARN] 서버 응답 이상', res.statusCode);
+      logger.warn('서버 응답 이상', { statusCode: res.statusCode });
       return false;
     }
   } catch (e) {
-    console.error('[ERROR] 서버 연결 실패', e.message);
+    logger.error('서버 연결 실패', { error: e.message });
     return false;
   }
 }
 
 async function getNextTask() {
-  console.log('[INFO] 작업 요청 중...');
+  logger.info('작업 요청 중...');
   try {
     const res = await makeRequest('GET', `/api/tasks/next?device_id=${CONFIG.device.id}`);
 
     if (res.statusCode === 200 && res.data.success && res.data.task) {
-      console.log('[SUCCESS] 작업 수신', {
+      logger.info('작업 수신', {
         task_id: res.data.task.task_id,
         title: res.data.task.title,
         keyword: res.data.task.keyword
       });
       return res.data.task;
     } else {
-      console.log('[INFO] 대기 중인 작업 없음');
+      logger.info('대기 중인 작업 없음');
       return null;
     }
   } catch (e) {
-    console.error('[ERROR] 작업 요청 실패', e.message);
+    logger.error('작업 요청 실패', { error: e.message });
     return null;
   }
 }
 
 async function completeTask(taskId, result) {
-  console.log('[INFO] 작업 완료 보고 중...', { task_id: taskId });
+  logger.info('작업 완료 보고 중...', { task_id: taskId });
   try {
     const res = await makeRequest('POST', `/api/tasks/${taskId}/complete`, {
       device_id: CONFIG.device.id,
@@ -132,32 +135,32 @@ async function completeTask(taskId, result) {
     });
 
     if (res.statusCode === 200 && res.data.success) {
-      console.log('[SUCCESS] 완료 보고 성공');
+      logger.info('완료 보고 성공');
       return true;
     } else {
-      console.error('[ERROR] 완료 보고 실패', res);
+      logger.error('완료 보고 실패', { response: res });
       return false;
     }
   } catch (e) {
-    console.error('[ERROR] 완료 보고 예외', e.message);
+    logger.error('완료 보고 예외', { error: e.message });
     return false;
   }
 }
 
 async function getTaskStatus() {
-  console.log('[INFO] 작업 현황 조회 중...');
+  logger.info('작업 현황 조회 중...');
   try {
     const res = await makeRequest('GET', '/api/tasks/status');
 
     if (res.statusCode === 200 && res.data.success) {
-      console.log('[SUCCESS] 작업 현황', res.data.summary);
+      logger.info('작업 현황', { summary: res.data.summary });
       return res.data.summary;
     } else {
-      console.error('[ERROR] 현황 조회 실패', res);
+      logger.error('현황 조회 실패', { response: res });
       return null;
     }
   } catch (e) {
-    console.error('[ERROR] 현황 조회 예외', e.message);
+    logger.error('현황 조회 예외', { error: e.message });
     return null;
   }
 }
@@ -165,9 +168,8 @@ async function getTaskStatus() {
 // ==================== 시뮬레이션 함수 ====================
 
 function simulateYouTubeWatch(task) {
-  console.log('\n' + '='.repeat(50));
-  console.log('[SIMULATE] YouTube 시청 시뮬레이션');
-  console.log('Task:', {
+  logger.info('==================================================');
+  logger.info('YouTube 시청 시뮬레이션', {
     id: task.task_id,
     title: task.title,
     keyword: task.keyword,
@@ -188,38 +190,38 @@ function simulateYouTubeWatch(task) {
     error_message: null
   };
 
-  console.log('[SIMULATE] YouTube 앱 실행');
-  console.log('[SIMULATE] 영상 검색/열기');
-  console.log(`[SIMULATE] ${result.watch_duration}초 동안 시청 중...`);
+  logger.debug('YouTube 앱 실행');
+  logger.debug('영상 검색/열기');
+  logger.info('시청 중...', { seconds: result.watch_duration });
 
   if (result.liked) {
-    console.log('[SIMULATE] 좋아요 클릭');
+    logger.debug('좋아요 클릭');
   }
 
   if (result.commented) {
-    console.log('[SIMULATE] 댓글 작성');
+    logger.debug('댓글 작성');
   }
 
   if (result.subscribed) {
-    console.log('[SIMULATE] 구독 클릭');
+    logger.debug('구독 클릭');
     // 구독했을 경우 알림 설정도 시뮬레이션
     if (Math.random() < 0.7) {
       result.notification_set = true;
-      console.log('[SIMULATE] 알림 설정 (전체)');
+      logger.debug('알림 설정 (전체)');
     }
   }
 
   if (result.shared) {
-    console.log('[SIMULATE] 공유 메뉴 열기');
+    logger.debug('공유 메뉴 열기');
   }
 
   if (result.added_to_playlist) {
-    console.log('[SIMULATE] 재생목록 추가 (나중에 볼 동영상)');
+    logger.debug('재생목록 추가 (나중에 볼 동영상)');
   }
 
-  console.log('[SIMULATE] YouTube 앱 종료');
-  console.log('[SUCCESS] 시청 완료', result);
-  console.log('='.repeat(50) + '\n');
+  logger.debug('YouTube 앱 종료');
+  logger.info('시청 완료', { result });
+  logger.info('==================================================');
 
   return result;
 }
@@ -227,29 +229,27 @@ function simulateYouTubeWatch(task) {
 // ==================== 메인 루프 ====================
 
 async function mainLoop() {
-  console.log('🚀 AIFARM AutoX.js Simulator 시작\n');
+  logger.info('AIFARM AutoX.js Simulator 시작');
 
   // 1. 서버 연결 확인
   if (!await healthCheck()) {
-    console.error('❌ 서버 연결 실패. Backend 서버를 먼저 실행하세요.');
-    console.log('\n실행 방법:');
-    console.log('  cd backend');
-    console.log('  python main.py\n');
+    logger.error('서버 연결 실패. Backend 서버를 먼저 실행하세요.');
+    logger.info('실행 방법', { steps: ['cd backend', 'python main.py'] });
     process.exit(1);
   }
 
-  console.log('\n✅ 서버 연결 성공!\n');
+  logger.info('서버 연결 성공');
 
   // 2. 초기 현황 확인
   await getTaskStatus();
 
-  console.log('\n📝 시뮬레이션 시작 (Ctrl+C로 종료)\n');
+  logger.info('시뮬레이션 시작 (Ctrl+C로 종료)');
 
   let iteration = 0;
 
   while (true) {
     iteration++;
-    console.log(`\n--- Iteration #${iteration} ---`);
+    logger.info('Iteration', { iteration });
 
     try {
       // 3. 작업 요청
@@ -265,17 +265,19 @@ async function mainLoop() {
         // 6. 현황 확인
         await getTaskStatus();
       } else {
-        console.log('[INFO] 대기 중... (작업이 없습니다)');
-        console.log('[HINT] Frontend에서 작업을 등록하거나 다음 명령을 실행하세요:');
-        console.log('       curl -X POST http://localhost:8000/api/tasks -H "Content-Type: application/json" -d \'{"keyword":"여행 브이로그","title":"테스트 영상","priority":5}\'\n');
+        logger.info('대기 중... (작업이 없습니다)');
+        logger.info('힌트', {
+          command:
+            "curl -X POST http://localhost:8000/api/tasks -H \"Content-Type: application/json\" -d '{\"keyword\":\"여행 브이로그\",\"title\":\"테스트 영상\",\"priority\":5}'"
+        });
       }
 
       // 7. 대기 (3초)
-      console.log('[WAIT] 3초 대기...\n');
+      logger.debug('3초 대기...');
       await new Promise(resolve => setTimeout(resolve, 3000));
 
     } catch (e) {
-      console.error('[ERROR] 메인 루프 예외', e.message);
+      logger.error('메인 루프 예외', { error: e.message });
       await new Promise(resolve => setTimeout(resolve, 5000));
     }
   }
@@ -283,12 +285,12 @@ async function mainLoop() {
 
 // ==================== 종료 핸들러 ====================
 process.on('SIGINT', () => {
-  console.log('\n\n🛑 시뮬레이터 종료');
+  logger.warn('시뮬레이터 종료');
   process.exit(0);
 });
 
 // ==================== 실행 ====================
-mainLoop().catch(err => {
-  console.error('Fatal error:', err);
+mainLoop().catch((err) => {
+  logger.error('Fatal error', { error: err instanceof Error ? err.message : String(err) });
   process.exit(1);
 });

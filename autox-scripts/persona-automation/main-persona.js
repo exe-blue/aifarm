@@ -37,6 +37,7 @@ const ResourceManager = require('./modules/resource-manager.js');
 // ==================== 설정 로드 ====================
 const ENV = 'dev';
 let config;
+const bootLogger = Logger.createBootLogger({ deviceId: (device && device.serial) ? device.serial : 'unknown', level: 'info' });
 
 try {
     // 기본 설정
@@ -50,7 +51,7 @@ try {
         // 입력 검증
         const validation = Validator.validateVariables(variables);
         if (!validation.valid) {
-            console.warn('⚠️  설정 검증 경고:', validation.errors);
+            bootLogger.warn('설정 검증 경고', { errors: validation.errors });
             variables = validation.correctedVariables;  // 수정된 값 사용
         }
         
@@ -61,12 +62,12 @@ try {
         config.exploration = variables.exploration;
         
     } catch (varErr) {
-        console.error('변수 파일 로드 실패, 기본값 사용:', varErr.message);
+        bootLogger.warn('변수 파일 로드 실패, 기본값 사용', { error: varErr.message });
         // variables.json 없어도 계속 진행 (persona.json의 기본값 사용)
     }
     
 } catch (e) {
-    console.error('설정 파일 로드 실패:', e.message);
+    bootLogger.error('설정 파일 로드 실패', { error: e.message });
     config = {
         device: { id: device.serial || 'unknown' },
         server: { host: '127.0.0.1', port: 3100, protocol: 'http' },
@@ -422,8 +423,6 @@ async function randomSleep() {
 
 // ==================== 실행 ====================
 
-try {
-    mainLoop();
-} catch (e) {
+mainLoop().catch((e) => {
     logger.error('❌ 치명적 에러', { error: e.message, stack: e.stack });
-}
+});

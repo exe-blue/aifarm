@@ -30,11 +30,12 @@ const Receiver = require('./modules/receiver.js');
 // ==================== 설정 로드 ====================
 const ENV = 'dev'; // 'dev' 또는 'prod'
 let config;
+const bootLogger = Logger.createBootLogger({ deviceId: (device && device.serial) ? device.serial : 'unknown', level: 'info' });
 
 try {
     config = JSON.parse(files.read(`./config/${ENV}.json`));
 } catch (e) {
-    console.error('설정 파일 로드 실패:', e.message);
+    bootLogger.error('설정 파일 로드 실패', { error: e.message });
     // 기본 설정
     config = {
         device: { id: device.serial || 'unknown' },
@@ -316,12 +317,10 @@ function mainLoop() {
 // ==================== 시작 함수 ====================
 
 function start() {
-    console.log('');
-    console.log('╔════════════════════════════════════════════════╗');
-    console.log('║   🤖 DoAi.Me AutoX.js v2.0                      ║');
-    console.log('║   Physical Link Layer                          ║');
-    console.log('╚════════════════════════════════════════════════╝');
-    console.log('');
+    logger.info('╔════════════════════════════════════════════════╗');
+    logger.info('║   🤖 DoAi.Me AutoX.js v2.0                      ║');
+    logger.info('║   Physical Link Layer                          ║');
+    logger.info('╚════════════════════════════════════════════════╝');
 
     logger.info('🚀 시작');
     logger.info('환경', { env: ENV });
