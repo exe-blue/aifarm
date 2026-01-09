@@ -13,6 +13,7 @@ import { useGridLayout } from '../hooks/useGridLayout';
 import { DeviceGrid } from '../components/DeviceGrid';
 import { GlobalActionBar } from '../components/GlobalActionBar';
 import { StatusBar } from '../components/StatusBar';
+import { logger } from '@/lib/logger';
 
 export default function Dashboard() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +68,7 @@ export default function Dashboard() {
       await refresh();
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : '알 수 없는 오류가 발생했습니다';
-      console.error('Scan failed:', e);
+      logger.error('디바이스 스캔 실패', { error: e instanceof Error ? e.message : String(e) });
       setScanError(errorMessage);
     } finally {
       setIsScanning(false);

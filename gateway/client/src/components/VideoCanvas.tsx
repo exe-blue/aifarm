@@ -11,6 +11,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import JMuxer from 'jmuxer';
 import type { StreamQuality } from '../lib/grid-calculator';
+import { logger } from '@/lib/logger';
 
 // 재연결 설정
 const RECONNECT_CONFIG = {
@@ -92,10 +93,13 @@ export function VideoCanvas({
       clearBuffer: true,
       debug: false,
       onReady: () => {
-        console.log(`[VideoCanvas] jmuxer ready for ${deviceId}`);
+        logger.debug('jmuxer 준비 완료', { deviceId });
       },
       onError: (err) => {
-        console.error(`[VideoCanvas] jmuxer error for ${deviceId}:`, err);
+        logger.error('jmuxer 오류', {
+          deviceId,
+          error: err instanceof Error ? err.message : String(err)
+        });
         setErrorMessage('디코더 오류');
       }
     });
@@ -124,7 +128,7 @@ export function VideoCanvas({
     wsRef.current = ws;
     
     ws.onopen = () => {
-      console.log(`[VideoCanvas] ${deviceId} WebSocket connected`);
+      logger.info('스트림 WebSocket 연결됨', { deviceId });
       setStatus('connected');
       reconnectAttemptRef.current = 0;
       setReconnectAttempt(0);
@@ -179,11 +183,11 @@ export function VideoCanvas({
     };
     
     ws.onerror = (event) => {
-      console.error(`[VideoCanvas] ${deviceId} WebSocket error:`, event);
+      logger.error('스트림 WebSocket 에러 이벤트', { deviceId, type: event.type });
     };
     
     ws.onclose = (event) => {
-      console.log(`[VideoCanvas] ${deviceId} WebSocket closed:`, event.code, event.reason);
+      logger.warn('스트림 WebSocket 종료됨', { deviceId, code: event.code, reason: event.reason });
       
       // 정상 종료가 아니면 재연결
       if (event.code !== 1000 && isVisible) {
@@ -198,7 +202,12 @@ export function VideoCanvas({
         
         // 재연결 스케줄링
         const delay = RECONNECT_CONFIG.intervalMs * Math.pow(RECONNECT_CONFIG.backoffMultiplier, currentAttempt);
-        console.log(`[VideoCanvas] ${deviceId} 재연결 ${currentAttempt + 1}/${RECONNECT_CONFIG.maxAttempts} - ${Math.round(delay / 1000)}초 후`);
+        logger.warn('스트림 재연결 예약', {
+          deviceId,
+          attempt: currentAttempt + 1,
+          maxAttempts: RECONNECT_CONFIG.maxAttempts,
+          delaySeconds: Math.round(delay / 1000)
+        });
         
         setStatus('reconnecting');
         reconnectAttemptRef.current = currentAttempt + 1;

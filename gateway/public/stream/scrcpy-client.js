@@ -36,6 +36,14 @@ function initScrcpyClient(canvasId, wsUrl, statusId) {
     let nalBuffer = new Uint8Array(0);
 
     /**
+     * 디버그 로깅 (기본 비활성)
+     * - console 직접 호출 금지: 필요 시에만 UI/서버 로깅으로 확장
+     */
+    function logDebug() {
+        // no-op
+    }
+
+    /**
      * WebSocket 연결
      */
     function connect() {
@@ -67,7 +75,6 @@ function initScrcpyClient(canvasId, wsUrl, statusId) {
         };
 
         ws.onerror = (err) => {
-            console.error('[ScrcpyClient] WebSocket error:', err);
             updateStatus('Connection Error', 'error');
         };
     }
@@ -94,7 +101,6 @@ function initScrcpyClient(canvasId, wsUrl, statusId) {
     function initDecoder() {
         // WebCodecs 지원 확인
         if (typeof VideoDecoder === 'undefined') {
-            console.warn('[ScrcpyClient] WebCodecs not supported, using fallback');
             initFallbackDecoder();
             return;
         }
@@ -103,7 +109,6 @@ function initScrcpyClient(canvasId, wsUrl, statusId) {
             decoder = new VideoDecoder({
                 output: (frame) => renderFrame(frame),
                 error: (e) => {
-                    console.error('[ScrcpyClient] Decoder error:', e);
                     // 디코더 재초기화 시도
                     cleanupDecoder();
                     setTimeout(initDecoder, 1000);
@@ -115,9 +120,8 @@ function initScrcpyClient(canvasId, wsUrl, statusId) {
                 optimizeForLatency: true
             });
 
-            console.log('[ScrcpyClient] VideoDecoder initialized');
+            logDebug('VideoDecoder initialized');
         } catch (e) {
-            console.error('[ScrcpyClient] Failed to init decoder:', e);
             initFallbackDecoder();
         }
     }
@@ -126,7 +130,7 @@ function initScrcpyClient(canvasId, wsUrl, statusId) {
      * Fallback 디코더 (Broadway.js 또는 이미지 기반)
      */
     function initFallbackDecoder() {
-        console.log('[ScrcpyClient] Using image fallback decoder');
+        logDebug('Using image fallback decoder');
         decoder = {
             type: 'fallback',
             decode: (data) => {
@@ -169,7 +173,7 @@ function initScrcpyClient(canvasId, wsUrl, statusId) {
                     });
                     decoder.decode(chunk);
                 } catch (e) {
-                    console.warn('[ScrcpyClient] Decode error:', e);
+                    // 디코드 오류는 빈번할 수 있어 무시
                 }
             }
         }
@@ -278,7 +282,7 @@ function initScrcpyClient(canvasId, wsUrl, statusId) {
      * 상태 메시지 처리
      */
     function handleStatusMessage(status) {
-        console.log('[ScrcpyClient] Status:', status);
+        logDebug('Status', status);
         
         if (status.type === 'status') {
             if (statusEl) {

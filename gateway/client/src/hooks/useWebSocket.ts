@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { WSMessage, DevicesUpdatedMessage } from '../types';
+import { logger } from '@/lib/logger';
 
 interface UseWebSocketOptions {
   onDevicesUpdate?: (message: DevicesUpdatedMessage) => void;
@@ -20,6 +21,12 @@ interface UseWebSocketOptions {
   reconnectInterval?: number;
   maxReconnectAttempts?: number;
 }
+
+// 매직 넘버 방지용 기본값
+const DEFAULT_RECONNECT_INTERVAL_MS = 10_000;
+const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
+const RECONNECT_BACKOFF_MULTIPLIER = 1.5;
+const MANUAL_RECONNECT_DELAY_MS = 100;
 
 // 전역 WebSocket 인스턴스 (싱글톤)
 let globalWs: WebSocket | null = null;
@@ -39,8 +46,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     onDevicesUpdate,
     onError,
     autoReconnect = true,
-    reconnectInterval = 10000,
-    maxReconnectAttempts = 3
+    reconnectInterval = DEFAULT_RECONNECT_INTERVAL_MS,
+    maxReconnectAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS
   } = options;
 
   const [isConnected, setIsConnected] = useState(globalConnectionState === 'connected');
@@ -101,13 +108,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
-    
-    console.log('[useWebSocket] Connecting to', wsUrl);
+
+    logger.info('WebSocket 연결 시도', { wsUrl });
     
     const ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
-      console.log('[useWebSocket] Connected');
+      logger.info('WebSocket 연결됨');
       globalConnectionState = 'connected';
       globalWs = ws;
       reconnectAttempts = 0;
@@ -142,21 +149,28 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           try {
             listener(message);
           } catch (e) {
-            console.error('[useWebSocket] Handler error:', e);
+            logger.error('WebSocket 핸들러 예외', {
+              error: e instanceof Error ? e.message : String(e)
+            });
           }
         });
-      } catch {
-        // JSON 파싱 실패
+      } catch (e) {
+        // JSON 파싱 실패 (빈번할 수 있어 debug로만 남김)
+        logger.debug('WebSocket 메시지 파싱 실패', {
+          error: e instanceof Error ? e.message : String(e)
+        });
       }
     };
 
     ws.onerror = (event) => {
-      console.error('[useWebSocket] Error:', event);
+      logger.error('WebSocket 에러 이벤트', {
+        type: event.type
+      });
       onError?.(new Error('WebSocket error'));
     };
 
     ws.onclose = (event) => {
-      console.log('[useWebSocket] Closed:', event.code, event.reason);
+      logger.warn('WebSocket 종료됨', { code: event.code, reason: event.reason });
       globalConnectionState = 'disconnected';
       globalWs = null;
       setIsConnected(false);
@@ -165,8 +179,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       if (autoReconnect && reconnectAttempts < maxReconnectAttempts && mountedComponentsCount > 0) {
         reconnectAttempts++;
         isReconnecting = true;
-        const delay = reconnectInterval * Math.pow(1.5, reconnectAttempts - 1);
-        console.log(`[useWebSocket] Reconnecting in ${Math.round(delay / 1000)}s (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+        const delay = reconnectInterval * Math.pow(RECONNECT_BACKOFF_MULTIPLIER, reconnectAttempts - 1);
+        logger.warn('WebSocket 재연결 예약', {
+          delaySeconds: Math.round(delay / 1000),
+          attempt: reconnectAttempts,
+          maxReconnectAttempts
+        });
         
         // 기존 타이머 정리 후 새 타이머 설정
         if (reconnectTimer !== null) {
@@ -238,17 +256,17 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const reconnect = useCallback(() => {
     // 이미 재연결 중이거나 타이머가 설정되어 있으면 무시
     if (isReconnecting || reconnectTimer !== null) {
-      console.log('[useWebSocket] Reconnect already pending, ignoring');
+      logger.debug('재연결 대기 중(무시)');
       return;
     }
     
     // 수동 재연결 타이머가 설정되어 있으면 무시
     if (manualReconnectTimeoutRef.current !== null) {
-      console.log('[useWebSocket] Manual reconnect already pending, ignoring');
+      logger.debug('수동 재연결 대기 중(무시)');
       return;
     }
-    
-    console.log('[useWebSocket] Manual reconnect requested');
+
+    logger.info('수동 재연결 요청');
     
     // 기존 연결/타이머 정리
     disconnect();
@@ -262,7 +280,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       manualReconnectTimeoutRef.current = null;
       isReconnecting = false;
       connect();
-    }, 100);
+    }, MANUAL_RECONNECT_DELAY_MS);
   }, [connect, disconnect]);
 
   // 컴포넌트 마운트 시 연결 (전역 싱글톤)

@@ -36,10 +36,41 @@ const supabase = createClient(
 );
 
 // ==================== 로거 ====================
+function safeJsonStringify(value) {
+  const seen = new WeakSet();
+  try {
+    return JSON.stringify(value, (_key, v) => {
+      if (typeof v === 'object' && v !== null) {
+        if (seen.has(v)) return '[Circular]';
+        seen.add(v);
+      }
+      if (v instanceof Error) {
+        return { name: v.name, message: v.message, stack: v.stack };
+      }
+      return v;
+    });
+  } catch {
+    return '"[Unserializable]"';
+  }
+}
+
+function writeLog(level, msg, data = {}) {
+  const ts = new Date().toISOString();
+  const meta = data && Object.keys(data).length > 0 ? ` ${safeJsonStringify(data)}` : '';
+  const line = `[${ts}] [${level}] ${msg}${meta}\n`;
+
+  // console.* 직접 호출 금지: stdout/stderr로 기록
+  if (level === 'ERROR') {
+    process.stderr.write(line);
+    return;
+  }
+  process.stdout.write(line);
+}
+
 const logger = {
-  info: (msg, data = {}) => console.log(`[INFO] ${msg}`, JSON.stringify(data)),
-  warn: (msg, data = {}) => console.warn(`[WARN] ${msg}`, JSON.stringify(data)),
-  error: (msg, data = {}) => console.error(`[ERROR] ${msg}`, JSON.stringify(data))
+  info: (msg, data = {}) => writeLog('INFO', msg, data),
+  warn: (msg, data = {}) => writeLog('WARN', msg, data),
+  error: (msg, data = {}) => writeLog('ERROR', msg, data)
 };
 
 // ==================== WebSocket 서버 ====================
