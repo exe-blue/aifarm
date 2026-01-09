@@ -8,6 +8,20 @@ const WebSocket = require('ws');
 const WS_URL = 'ws://localhost:3100/ws/dashboard';
 const TIMEOUT = 5000;
 
+/**
+ * Sanitize string for safe logging (prevent log injection)
+ * @param {*} value - Value to sanitize
+ * @returns {string} Sanitized string
+ */
+function sanitize(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/\r\n/g, '\\r\\n')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+}
+
 console.log('\n=== Dashboard WebSocket Test ===\n');
 console.log('Connecting to:', WS_URL);
 
@@ -27,20 +41,20 @@ ws.on('message', (data) => {
     clearTimeout(timeout);
     try {
         const msg = JSON.parse(data.toString());
-        console.log('\nReceived message type:', msg.type);
+        console.log('\nReceived message type:', sanitize(msg.type));
 
         if (msg.type === 'INIT') {
             console.log('\n--- Node Info ---');
-            console.log('  ID:', msg.node.id);
-            console.log('  Hostname:', msg.node.hostname);
-            console.log('  Status:', msg.node.status);
-            console.log('  Devices:', msg.node.deviceCount, '(Online:', msg.node.onlineDeviceCount + ')');
-            console.log('  Laixi:', msg.node.laixiConnected ? 'Connected' : 'Not connected');
+            console.log('  ID:', sanitize(msg.node?.id));
+            console.log('  Hostname:', sanitize(msg.node?.hostname));
+            console.log('  Status:', sanitize(msg.node?.status));
+            console.log('  Devices:', sanitize(msg.node?.deviceCount), '(Online:', sanitize(msg.node?.onlineDeviceCount) + ')');
+            console.log('  Laixi:', msg.node?.laixiConnected ? 'Connected' : 'Not connected');
 
             console.log('\n--- Devices ---');
             if (msg.devices && msg.devices.length > 0) {
                 msg.devices.forEach((d, i) => {
-                    console.log(`  [${i + 1}] ${d.serial} - ${d.model} (${d.status})`);
+                    console.log(`  [${i + 1}] ${sanitize(d.serial)} - ${sanitize(d.model)} (${sanitize(d.status)})`);
                 });
             } else {
                 console.log('  No devices');

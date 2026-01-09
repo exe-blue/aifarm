@@ -364,7 +364,7 @@ async def list_alerts(
         return {
             "alerts": [],
             "count": 0,
-            "error": str(e),
+            "error": "An internal error occurred",
         }
 
 
@@ -418,7 +418,7 @@ async def send_alert(request: AlertRequest):
                     sent_to_slack = True
                     slack_response = {"status": "sent"}
                 except Exception as e:
-                    slack_response = {"status": "failed", "error": str(e)}
+                    slack_response = {"status": "failed", "error": "Slack notification failed"}
 
             if discord_webhook:
                 try:
@@ -431,7 +431,7 @@ async def send_alert(request: AlertRequest):
                     sent_to_discord = True
                     discord_response = {"status": "sent"}
                 except Exception as e:
-                    discord_response = {"status": "failed", "error": str(e)}
+                    discord_response = {"status": "failed", "error": "Discord notification failed"}
 
         # Supabase에 알림 기록 저장
         alert_id = None
@@ -476,7 +476,7 @@ async def send_alert(request: AlertRequest):
 
     except Exception as e:
         logger.error(f"Failed to send alert: {e}")
-        return AlertResponse(success=False, message=f"Failed to send alert: {str(e)}")
+        return AlertResponse(success=False, message="An internal error occurred while sending alert")
 
 
 @router.get("/api/monitoring/network")
@@ -505,7 +505,7 @@ async def network_health():
         logger.error(f"Failed to get network health: {e}")
         return {
             "status": "unknown",
-            "error": str(e),
+            "error": "An internal error occurred",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -563,7 +563,7 @@ async def get_logs(
         return {
             "logs": [],
             "count": 0,
-            "error": str(e),
+            "error": "An internal error occurred",
         }
 
 
@@ -597,7 +597,7 @@ async def create_log(request: LogRequest):
         logger.error(f"Failed to save log: {e}")
         return LogResponse(
             success=False,
-            message=f"Failed to save log: {str(e)}",
+            message="An internal error occurred while saving log",
         )
 
 
@@ -623,5 +623,5 @@ async def get_logs_stats(
         logger.error(f"Failed to get log stats: {e}")
         return {
             "stats": {},
-            "error": str(e),
+            "error": "An internal error occurred",
         }
