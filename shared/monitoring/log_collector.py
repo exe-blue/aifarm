@@ -16,7 +16,6 @@ Supabase monitoring_logs 테이블에 로그 저장
 """
 
 import asyncio
-import os
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
