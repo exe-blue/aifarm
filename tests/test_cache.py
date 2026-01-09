@@ -6,12 +6,12 @@ rate limiting, and system stats.
 """
 
 import asyncio
-import pytest
+import os
+import sys
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import sys
-import os
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
