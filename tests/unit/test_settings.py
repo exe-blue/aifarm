@@ -102,11 +102,17 @@ class TestSettings:
             == "test-service-role-key-67890"
         )
 
-    def test_settings_optional_supabase_keys(self, reset_settings_cache):
+    def test_settings_optional_supabase_keys(self, reset_settings_cache, monkeypatch):
         """Supabase 키가 없을 때 None 반환"""
+        # Supabase 환경 변수 제거
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+
         from shared.config.settings import Settings
 
-        settings = Settings()
+        # env_file=None으로 .env 파일 읽기 비활성화
+        settings = Settings(_env_file=None)
 
         # 환경 변수가 설정되지 않은 경우 None 반환
         assert settings.get_supabase_anon_key_value() is None

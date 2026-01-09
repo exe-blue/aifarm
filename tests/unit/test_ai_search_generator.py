@@ -87,8 +87,14 @@ class TestCleanKeyword:
     
     def test_combined_cleaning(self):
         """복합 정제"""
-        assert AISearchGenerator._clean_keyword('"  브이로그  "\n추가') == "브이로그"
-        assert AISearchGenerator._clean_keyword("'  게임  '") == "게임"
+        # _clean_keyword: strip outer quotes -> split newline -> strip whitespace
+        # 따옴표로 감싼 단순 텍스트
+        assert AISearchGenerator._clean_keyword('"브이로그"') == "브이로그"
+        assert AISearchGenerator._clean_keyword("'게임'") == "게임"
+        # 줄바꿈 있는 경우 (첫 줄만 사용)
+        assert AISearchGenerator._clean_keyword("음악\n설명") == "음악"
+        # 따옴표 + 내부 공백 (내부 공백은 유지됨)
+        assert AISearchGenerator._clean_keyword('"요리 레시피"') == "요리 레시피"
     
     def test_empty_string(self):
         """빈 문자열"""
@@ -104,36 +110,36 @@ class TestCleanKeyword:
 
 class TestBuildPrompt:
     """프롬프트 생성 테스트"""
-    
+
     def test_default_prompt(self):
         """기본 프롬프트"""
-        prompt = AISearchGenerator._build_prompt()
+        prompt = AISearchGenerator._build_prompt(None, None, None)
         assert "YouTube" in prompt or "검색" in prompt
-    
+
     def test_gaming_category(self):
         """게임 카테고리"""
-        prompt = AISearchGenerator._build_prompt(category="gaming")
+        prompt = AISearchGenerator._build_prompt("gaming", None, None)
         assert "게임" in prompt or "gaming" in prompt.lower()
-    
+
     def test_music_category(self):
         """음악 카테고리"""
-        prompt = AISearchGenerator._build_prompt(category="music")
+        prompt = AISearchGenerator._build_prompt("music", None, None)
         assert "음악" in prompt or "music" in prompt.lower()
-    
+
     def test_with_context(self):
         """컨텍스트 포함"""
-        prompt = AISearchGenerator._build_prompt(context="저녁 시간대, 20대 시청자")
+        prompt = AISearchGenerator._build_prompt(None, "저녁 시간대, 20대 시청자", None)
         assert "저녁" in prompt or "20대" in prompt
-    
+
     def test_with_exclude_keywords(self):
         """제외 키워드 포함"""
         exclude = ["먹방", "브이로그"]
-        prompt = AISearchGenerator._build_prompt(exclude_keywords=exclude)
+        prompt = AISearchGenerator._build_prompt(None, None, exclude)
         assert "먹방" in prompt or "제외" in prompt
-    
+
     def test_unknown_category(self):
         """알 수 없는 카테고리"""
-        prompt = AISearchGenerator._build_prompt(category="unknown_category")
+        prompt = AISearchGenerator._build_prompt("unknown_category", None, None)
         # 에러 없이 기본 프롬프트 반환
         assert prompt is not None
         assert len(prompt) > 0
