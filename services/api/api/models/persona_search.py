@@ -15,11 +15,16 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from uuid import UUID, uuid4
+from enum import Enum
 
-# shared 스키마에서 import
-import sys
-sys.path.insert(0, '/mnt/d/exe.blue/aifarm')
-from shared.schemas.persona import SearchSource
+
+# SearchSource를 로컬에 정의 (shared 의존성 제거 - Docker 호환)
+class SearchSource(str, Enum):
+    """검색어 생성 출처"""
+    AI_GENERATED = "ai_generated"      # OpenAI로 생성
+    TRAIT_BASED = "trait_based"        # Traits 기반 폴백
+    HISTORY_BASED = "history_based"    # 과거 검색 기반
+    FALLBACK = "fallback"              # 최종 폴백 키워드
 
 
 # ==================== Request Models ====================
