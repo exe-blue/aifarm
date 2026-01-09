@@ -62,6 +62,38 @@ class AdbForwarder extends EventEmitter {
 
         // 상태 추적: serial -> state
         this._states = new Map();
+
+        // ADB serial validation pattern (alphanumeric, dots, colons, hyphens, underscores)
+        this._serialPattern = /^[a-zA-Z0-9.:_-]+$/;
+    }
+
+    /**
+     * Validate ADB serial to prevent command injection
+     * @param {string} serial - Device serial
+     * @throws {Error} If serial contains invalid characters
+     */
+    _validateSerial(serial) {
+        if (!serial || typeof serial !== 'string') {
+            throw new Error('Serial must be a non-empty string');
+        }
+        if (!this._serialPattern.test(serial)) {
+            throw new Error('Invalid serial format: contains disallowed characters');
+        }
+    }
+
+    /**
+     * Validate Chrome package name
+     * @param {string} pkg - Package name
+     * @throws {Error} If package name contains invalid characters
+     */
+    _validatePackage(pkg) {
+        if (!pkg || typeof pkg !== 'string') {
+            throw new Error('Package must be a non-empty string');
+        }
+        // Package names: lowercase letters, numbers, dots, underscores
+        if (!/^[a-z0-9._]+$/i.test(pkg)) {
+            throw new Error('Invalid package format');
+        }
     }
 
     /**
@@ -86,6 +118,7 @@ class AdbForwarder extends EventEmitter {
      * @returns {Promise<string|null>} 설치된 Chrome 패키지명
      */
     async detectChromePackage(serial) {
+        this._validateSerial(serial);
         for (const [name, pkg] of Object.entries(CHROME_PACKAGES)) {
             try {
                 const { stdout } = await execAsync(
@@ -110,6 +143,8 @@ class AdbForwarder extends EventEmitter {
      * @returns {Promise<boolean>}
      */
     async launchChromeWithDebugging(serial, chromePackage = null) {
+        this._validateSerial(serial);
+        if (chromePackage) this._validatePackage(chromePackage);
         try {
             // Chrome 패키지 확인
             const pkg = chromePackage || await this.detectChromePackage(serial);
@@ -151,6 +186,7 @@ class AdbForwarder extends EventEmitter {
      * @returns {Promise<string|null>} 소켓 이름
      */
     async findChromeSocket(serial) {
+        this._validateSerial(serial);
         try {
             // Chrome의 devtools_remote 소켓 찾기
             const { stdout } = await execAsync(
@@ -205,6 +241,7 @@ class AdbForwarder extends EventEmitter {
      * @returns {Promise<{ localPort: number, success: boolean }>}
      */
     async forward(serial, socket = null) {
+        this._validateSerial(serial);
         try {
             // 이미 포워딩 중인지 확인
             if (this._portMap.has(serial)) {
@@ -269,6 +306,7 @@ class AdbForwarder extends EventEmitter {
      * @returns {Promise<boolean>}
      */
     async unforward(serial) {
+        this._validateSerial(serial);
         try {
             const localPort = this._portMap.get(serial);
             if (!localPort) {
