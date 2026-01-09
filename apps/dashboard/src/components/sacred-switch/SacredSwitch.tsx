@@ -76,6 +76,7 @@ export default function SacredSwitch() {
         onChange={handleCustomAmountChange}
         onFocus={() => {
           setSelectedAmount(null);
+          setFinalHearts(0);
         }}
       />
 
