@@ -18,7 +18,7 @@ from uuid import UUID, uuid4
 from enum import Enum
 
 
-# SearchSource를 로컬에 정의 (shared 의존성 제거)
+# SearchSource를 로컬에 정의 (shared 의존성 제거 - Docker 호환)
 class SearchSource(str, Enum):
     """검색어 생성 출처"""
     AI_GENERATED = "ai_generated"      # OpenAI로 생성
