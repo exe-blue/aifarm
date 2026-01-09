@@ -16,8 +16,6 @@
  * @version 1.0.0
  */
 
-'nodejs';
-
 // ==================== 모듈 임포트 ====================
 const Logger = require('../modules/logger.js');
 const API = require('../modules/api.js');
