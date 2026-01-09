@@ -76,7 +76,7 @@ class PersonaChecker {
     captureScreen() {
         try {
             // AutoX.js 스크린샷
-            const img = captureScreen();
+            const img = global.captureScreen();
             if (img) {
                 // 파일로 저장
                 const timestamp = Date.now();
