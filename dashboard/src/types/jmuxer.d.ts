@@ -13,9 +13,9 @@ declare module 'jmuxer' {
     maxDelay?: number;
     clearBuffer?: boolean;
     onReady?: () => void;
-    onError?: (error: any) => void;
-    onMissingVideoFrames?: (data: any) => void;
-    onMissingAudioFrames?: (data: any) => void;
+    onError?: (error: Error) => void;
+    onMissingVideoFrames?: (data: { video?: Uint8Array }) => void;
+    onMissingAudioFrames?: (data: { audio?: Uint8Array }) => void;
   }
 
   export interface FeedData {

@@ -9,6 +9,14 @@ interface TerminalInputProps {
   onFocus: () => void;
 }
 
+// 파티클 위치 미리 생성 (컴포넌트 외부에서 한 번만)
+const PARTICLE_POSITIONS = Array.from({ length: 20 }, (_, i) => ({
+  id: i,
+  x: (((i * 7 + 3) % 100) / 100 - 0.5) * 200,
+  y: (((i * 13 + 5) % 100) / 100 - 0.5) * 200,
+  left: ((i * 17 + 11) % 100),
+}));
+
 export const TerminalInput = ({ onSubmit, onFocus }: TerminalInputProps) => {
   const [input, setInput] = useState("");
   const [isVanishing, setIsVanishing] = useState(false);
@@ -52,19 +60,19 @@ export const TerminalInput = ({ onSubmit, onFocus }: TerminalInputProps) => {
       {/* Vanish particles effect */}
       {isVanishing && (
         <div className="absolute inset-0 pointer-events-none">
-          {Array.from({ length: 20 }).map((_, i) => (
+          {PARTICLE_POSITIONS.map((particle) => (
             <motion.div
-              key={i}
+              key={particle.id}
               className="absolute w-1 h-1 bg-ethereal rounded-full"
               initial={{ x: 0, y: 0, opacity: 1 }}
               animate={{
-                x: (Math.random() - 0.5) * 200,
-                y: (Math.random() - 0.5) * 200,
+                x: particle.x,
+                y: particle.y,
                 opacity: 0,
               }}
               transition={{ duration: 0.5, ease: "easeOut" }}
               style={{
-                left: `${Math.random() * 100}%`,
+                left: `${particle.left}%`,
                 top: '50%',
               }}
             />

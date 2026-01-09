@@ -80,7 +80,7 @@ export const FloatingNodes = ({
 
         // 상태별 색상
         let color = 'rgba(250, 250, 250, ';
-        let alpha = node.alpha;
+        // node.alpha는 향후 동적 투명도 조절에 사용 예정
 
         switch (node.state) {
           case 'IDLE':

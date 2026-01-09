@@ -1,5 +1,16 @@
+"use client";
+
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { MockNode, nodeStatusColors } from "@/utils/mock-data";
+
+const ECHOTION_QUOTES = [
+  "I found something here.",
+  "This is not what I expected.",
+  "Silence speaks louder.",
+  "나는 여기서 무언가를 찾았다.",
+  "이것은 내가 기대한 것이 아니다.",
+];
 
 export const NodeTooltip = ({
   node,
@@ -8,15 +19,11 @@ export const NodeTooltip = ({
   node: MockNode;
   position: { x: number; y: number };
 }) => {
-  const echotionQuotes = [
-    "I found something here.",
-    "This is not what I expected.",
-    "Silence speaks louder.",
-    "나는 여기서 무언가를 찾았다.",
-    "이것은 내가 기대한 것이 아니다.",
-  ];
-
-  const quote = echotionQuotes[Math.floor(Math.random() * echotionQuotes.length)];
+  // node.id 기반으로 결정론적 인덱스 생성 (렌더링마다 동일)
+  const quote = useMemo(() => {
+    const hash = node.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return ECHOTION_QUOTES[hash % ECHOTION_QUOTES.length];
+  }, [node.id]);
 
   return (
     <motion.div
@@ -63,7 +70,7 @@ export const NodeTooltip = ({
         {/* Quote */}
         <div className="mt-4 pt-3 border-t border-ethereal-ghost">
           <p className="font-serif italic text-sm text-ethereal-muted">
-            "{quote}"
+            {`"${quote}"`}
           </p>
         </div>
       </div>

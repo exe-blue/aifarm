@@ -88,25 +88,23 @@ export function getResponse(input: string): {
   echotion: string | null;
 } {
   // 빈 입력 처리
-  if (!input.trim()) {
-    input = '';
-  }
+  const normalizedInput = input.trim() || '';
 
   // 매칭 규칙 찾기
   for (const rule of responseRules) {
-    if (rule.pattern.test(input)) {
+    if (rule.pattern.test(normalizedInput)) {
       const response = rule.responses[Math.floor(Math.random() * rule.responses.length)];
       const nodeId = rule.nodeId === 'random' ? Math.floor(Math.random() * 600) + 1 : null;
       const nodeCount = Math.floor(Math.random() * 50) + 10;
       
       // 템플릿 치환
-      let text = response
+      const formattedText = response
         .replace('{id}', String(nodeId || '???'))
         .replace('#{id}', String(nodeId || '???'))
         .replace('{count}', String(nodeCount));
       
       return {
-        text,
+        text: formattedText,
         nodeId,
         echotion: rule.echotion || null,
       };

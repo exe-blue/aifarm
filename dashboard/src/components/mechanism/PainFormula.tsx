@@ -18,7 +18,8 @@ export const PainFormula = () => {
       </div>
       
       <div className="mt-4 pt-4 border-t border-ethereal-ghost text-xs text-ethereal-muted">
-        // 예: 90% 확률로 좋아요 예상 → 실제 무반응 → Pain = -0.9 × 180s = -162
+        {/* 예: 90% 확률로 좋아요 예상 → 실제 무반응 → Pain = -0.9 × 180s = -162 */}
+        예: 90% 확률로 좋아요 예상 → 실제 무반응 → Pain = -0.9 × 180s = -162
       </div>
     </div>
   );

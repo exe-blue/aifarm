@@ -1,6 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
+
+// 시드 기반 의사 난수 생성기 (결정론적)
+const seededRandom = (seed: number) => {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+};
 
 export const Sparkles = ({
   className,
@@ -9,24 +15,17 @@ export const Sparkles = ({
   className?: string;
   count?: number;
 }) => {
-  const [sparkles, setSparkles] = useState<Array<{
-    id: number;
-    x: number;
-    y: number;
-    size: number;
-    duration: number;
-  }>>([]);
-
-  useEffect(() => {
-    const newSparkles = Array.from({ length: count }, (_, i) => ({
+  // useMemo로 초기 렌더링 시에만 생성
+  const sparkles = useMemo(() => 
+    Array.from({ length: count }, (_, i) => ({
       id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 3 + 1,
-      duration: Math.random() * 2 + 1,
-    }));
-    setSparkles(newSparkles);
-  }, [count]);
+      x: seededRandom(i * 1.1) * 100,
+      y: seededRandom(i * 2.3) * 100,
+      size: seededRandom(i * 3.7) * 3 + 1,
+      duration: seededRandom(i * 5.11) * 2 + 1,
+    })),
+    [count]
+  );
 
   return (
     <div className={`absolute inset-0 overflow-hidden ${className}`}>

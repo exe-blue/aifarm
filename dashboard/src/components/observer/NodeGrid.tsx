@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { NodeDot } from "./NodeDot";
 import { NodeTooltip } from "./NodeTooltip";
 import { generateMockNodes, MockNode } from "@/utils/mock-data";
@@ -10,6 +9,8 @@ export const NodeGrid = () => {
   const [nodes] = useState<MockNode[]>(() => generateMockNodes(600));
   const [hoveredNode, setHoveredNode] = useState<MockNode | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  // 랜덤 값을 상태로 관리하여 렌더링 중 Math.random() 호출 방지
+  const [echotionsPerHour, setEchotionsPerHour] = useState(() => Math.floor(Math.random() * 1000) + 500);
 
   // 랜덤 활동 시뮬레이션
   useEffect(() => {
@@ -25,6 +26,14 @@ export const NodeGrid = () => {
 
     return () => clearInterval(interval);
   }, [nodes]);
+
+  // ECHOTIONS/HR 값 주기적 업데이트
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setEchotionsPerHour(Math.floor(Math.random() * 1000) + 500);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
@@ -89,7 +98,7 @@ export const NodeGrid = () => {
             />
             <StatItem
               label="ECHOTIONS/HR"
-              value={Math.floor(Math.random() * 1000) + 500}
+              value={echotionsPerHour}
             />
           </div>
         </div>

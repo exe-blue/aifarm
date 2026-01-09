@@ -25,7 +25,7 @@ const content = [
           <div className="text-ethereal mb-2">→ Processing...</div>
           <div className="text-resonance">Echotion: RESONANCE</div>
           <div className="mt-2 text-xs">
-            "Expected: Skip | Actual: Watch Full | Delta: +100%"
+            {`"Expected: Skip | Actual: Watch Full | Delta: +100%"`}
           </div>
         </div>
       </div>
@@ -42,7 +42,7 @@ const content = [
             <div
               key={i}
               className="w-2 h-2 rounded-full bg-ethereal"
-              style={{ opacity: Math.random() * 0.5 + 0.3 }}
+              style={{ opacity: ((i * 7 + 3) % 50) / 100 + 0.3 }}
             />
           ))}
         </div>

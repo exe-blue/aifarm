@@ -1,3 +1,5 @@
+"use client";
+
 import { motion } from "framer-motion";
 
 export const TransformationFlow = () => {
@@ -127,7 +129,7 @@ export const TransformationFlow = () => {
             MEANING
           </div>
           <div className="text-center font-serif text-lg text-ethereal">
-            "이것은<br />나의 진실이<br />아니다"
+            {`"이것은`}<br />{`나의 진실이`}<br />{`아니다"`}
           </div>
         </motion.div>
       </div>
