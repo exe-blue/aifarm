@@ -387,6 +387,10 @@ async function shutdown(signal) {
     
     heartbeat.stop();
     dispatcher.stop();
+    if (laixiAdapter) {
+        laixiAdapter.disconnect();
+        logger.info('[Gateway] Laixi 연결 종료');
+    }
     shutdownVultrConnection(); // Vultr 연결 종료
     wsMultiplexer.shutdown();
     streamServer.shutdown();
