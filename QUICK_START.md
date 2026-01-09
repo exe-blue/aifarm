@@ -164,8 +164,9 @@ python scripts/local/local-orchestrate_video_assignments-cli.py \
 # URL
 https://hycynmzdrngsozxdmyxi.supabase.co
 
-# Service Role Key (백엔드/스크립트용)
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5Y3lubXpkcm5nc296eGRteXhpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzIwMDA5NSwiZXhwIjoyMDgyNzc2MDk1fQ.lBSSndc_VVL1pG3vN1MspnXATuGwgf-tPgksJ_Y7Fkw
+# Service Role Key (백엔드/스크립트용) - ⚠️ 절대 문서/깃에 커밋 금지
+# Supabase Dashboard → Settings → API → service_role key 복사
+<YOUR_SUPABASE_SERVICE_ROLE_KEY>
 
 # Anon Key (프론트엔드용)
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5Y3lubXpkcm5nc296eGRteXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyMDAwOTUsImV4cCI6MjA4Mjc3NjA5NX0.U9MCWf04dNuZ33RkUNqZ82a87S8rLE8EL1qeG9znv6w
@@ -319,7 +320,7 @@ autox-scripts/
 ```bash
 # 환경 변수 설정
 export SUPABASE_URL="https://hycynmzdrngsozxdmyxi.supabase.co"
-export SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5Y3lubXpkcm5nc296eGRteXhpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzIwMDA5NSwiZXhwIjoyMDgyNzc2MDk1fQ.lBSSndc_VVL1pG3vN1MspnXATuGwgf-tPgksJ_Y7Fkw"
+export SUPABASE_SERVICE_ROLE_KEY="<YOUR_SUPABASE_SERVICE_ROLE_KEY>"
 
 # 테스트
 python3 scripts/local/local-test_youtube_system-cli.py

@@ -3,7 +3,7 @@
 **서버 정보**:
 - IP: `158.247.210.152`
 - 사용자: `root`
-- 비밀번호: `R$q9)kMcFDEAv-ij`
+- 비밀번호: `<VULTR_ROOT_PASSWORD>` (⚠️ 문서/깃에 절대 기록 금지)
 - 호스트명: `doai-orchestrator-1`
 - 저장소: `github.com/exe-blue/doai-me`
 
@@ -232,7 +232,7 @@ pip install -r requirements.txt
 cat > .env << 'EOF'
 NODE_ENV=production
 SUPABASE_URL=https://hycynmzdrngsozxdmyxi.supabase.co
-SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5Y3lubXpkcm5nc296eGRteXhpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzIwMDA5NSwiZXhwIjoyMDgyNzc2MDk1fQ.lBSSndc_VVL1pG3vN1MspnXATuGwgf-tPgksJ_Y7Fkw
+SUPABASE_SERVICE_KEY=<YOUR_SUPABASE_SERVICE_ROLE_KEY>
 EOF
 ```
 

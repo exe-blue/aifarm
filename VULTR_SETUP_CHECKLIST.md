@@ -3,7 +3,7 @@
 **서버 정보**:
 - IP: `158.247.210.152`
 - 사용자: `root`
-- 비밀번호: `R$q9)kMcFDEAv-ij`
+- 비밀번호: `<VULTR_ROOT_PASSWORD>` (⚠️ 문서/깃에 절대 기록 금지)
 - 호스트명: `vultr-brain`
 
 ---
@@ -22,7 +22,7 @@ https://github.com/exe-blue/doai-me/settings/secrets/actions
 | Name | Value |
 |------|-------|
 | VULTR_SSH_KEY | (아래 private key 전체) |
-| SUPABASE_SERVICE_KEY | eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5Y3lubXpkcm5nc296eGRteXhpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzIwMDA5NSwiZXhwIjoyMDgyNzc2MDk1fQ.lBSSndc_VVL1pG3vN1MspnXATuGwgf-tPgksJ_Y7Fkw |
+| SUPABASE_SERVICE_KEY | `<YOUR_SUPABASE_SERVICE_ROLE_KEY>` (⚠️ service_role은 전체 권한, 절대 공개/커밋 금지) |
 
 **VULTR_SSH_KEY 생성 방법**:
 
@@ -33,7 +33,7 @@ ssh-keygen -t ed25519 -C "github-actions@doai.me" -f ~/.ssh/vultr_deploy -N ""
 
 # Public key를 Vultr 서버에 추가 (비밀번호 입력)
 ssh-copy-id -i ~/.ssh/vultr_deploy.pub root@158.247.210.152
-# 비밀번호: R$q9)kMcFDEAv-ij
+# 비밀번호: <VULTR_ROOT_PASSWORD>
 
 # Private key 복사 (GitHub Secrets에 등록)
 cat ~/.ssh/vultr_deploy
@@ -47,7 +47,7 @@ cat ~/.ssh/vultr_deploy
 **SSH 접속**:
 ```bash
 ssh root@158.247.210.152
-# 비밀번호: R$q9)kMcFDEAv-ij
+# 비밀번호: <VULTR_ROOT_PASSWORD>
 ```
 
 **설정 스크립트 다운로드 및 실행**:
@@ -159,7 +159,7 @@ curl https://158.247.210.152:8443/health
 ## 🔧 자동 실행 명령어 (복사용)
 
 ```bash
-# SSH 접속 (비밀번호: R$q9)kMcFDEAv-ij)
+# SSH 접속 (비밀번호는 여기 적지 말 것)
 ssh root@158.247.210.152
 
 # 한 번에 실행
