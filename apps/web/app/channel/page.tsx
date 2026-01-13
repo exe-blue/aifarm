@@ -3,19 +3,26 @@
 // ============================================
 // DoAi.ME - Channel 페이지
 // Smart TV 스타일 채널 관리 인터페이스
+// 필수/자유 영상 섹션 + AI 활동 시각화
 // ============================================
 
 import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
 import {
   Tv, Plus, Trash2, RefreshCw, Clock, Video,
   Eye, Calendar, ExternalLink,
-  Loader2, AlertCircle, CheckCircle, Rss, TrendingUp
+  Loader2, AlertCircle, CheckCircle, Rss, TrendingUp,
+  Activity, ListVideo
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Header } from '@/components/header';
 import { GuestNotice } from '@/components/GuestNotice';
 import { ChannelHeroSection } from './components/ChannelHeroSection';
 import { ChannelStatsBar, DEFAULT_CHANNEL_STATS } from './components/ChannelStatsBar';
+import { ChannelVideoSection } from './components/ChannelVideoSection';
+import { PersonaActivityPanel } from './components/PersonaActivityPanel';
+import { syncChannelVideos, getChannelStats } from './actions';
+
+type MainTab = 'videos' | 'activity';
 
 // ============================================
 // Types
