@@ -5,7 +5,6 @@
 // 현재 시청 중인 영상 + 디바이스 표시
 // ============================================
 
-import React from 'react';
 import { Activity, Play, Pause, ExternalLink } from 'lucide-react';
 import { Device, QueuedVideo } from '@/contexts/NodeContext';
 

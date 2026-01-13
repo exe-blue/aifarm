@@ -6,7 +6,7 @@
 // Kernel 브라우저 자동화 통합 (확률적 실행)
 // ============================================
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Video, Zap, AlertCircle, Loader2, CheckCircle, ExternalLink, Globe, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useNodes } from '@/contexts/NodeContext';

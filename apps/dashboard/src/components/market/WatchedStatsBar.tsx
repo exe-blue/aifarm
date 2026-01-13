@@ -5,7 +5,7 @@
 // 시청 통계 바
 // ============================================
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, Clock, TrendingUp, Zap, Smartphone, Monitor } from 'lucide-react';
 import { SystemStats } from '@/contexts/NodeContext';
 

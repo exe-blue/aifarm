@@ -4,7 +4,6 @@
 // QueuePanel - 시청 대기열 패널
 // ============================================
 
-import React from 'react';
 import { Loader, Play, Pause, Trash2, Clock } from 'lucide-react';
 import { QueuedVideo, useNodes } from '@/contexts/NodeContext';
 

@@ -4,7 +4,6 @@
 // CompletedPanel - 완료 목록 패널
 // ============================================
 
-import React from 'react';
 import { CheckCircle2, Clock, ExternalLink, TrendingUp, AlertTriangle } from 'lucide-react';
 import { CompletedVideo } from '@/contexts/NodeContext';
 

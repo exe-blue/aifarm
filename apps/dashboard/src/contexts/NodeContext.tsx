@@ -11,7 +11,7 @@
 // - 연결 상태 명확화
 // ============================================
 
-import React, {
+import {
   createContext,
   useContext,
   useReducer,

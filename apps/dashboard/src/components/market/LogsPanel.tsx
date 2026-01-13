@@ -5,7 +5,7 @@
 // 카테고리별 필터링 및 깔끔한 UI
 // ============================================
 
-import React, { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { 
   Activity, CheckCircle2, AlertCircle, Info, RotateCcw, 
   Download, ChevronDown, Filter, X, Wifi, Smartphone, Video, Globe, Settings

@@ -11,7 +11,7 @@
  * - Hybrid: Laixi로 시청 + Kernel로 인터랙션
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Settings,
   Smartphone,

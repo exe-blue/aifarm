@@ -6,7 +6,7 @@
  * 최근 명령 내역, 시청 완료, 현재 워크로드 상태를 표시합니다.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   History, 
   Play, 

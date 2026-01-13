@@ -5,7 +5,6 @@
 // 노드(PC) + 디바이스(스마트폰) 상태 + 복구 기능
 // ============================================
 
-import React from 'react';
 import { Wifi, WifiOff, AlertTriangle, RefreshCw, Monitor, Smartphone, Zap, AlertCircle, RotateCcw } from 'lucide-react';
 import { GatewayNode, Device, ConnectionStatus } from '@/contexts/NodeContext';
 

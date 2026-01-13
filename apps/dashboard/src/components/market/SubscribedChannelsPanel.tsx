@@ -5,7 +5,7 @@
 // 채널 목록 조회, 설정 수정, 구독 해제
 // ============================================
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Rss,
   Settings,

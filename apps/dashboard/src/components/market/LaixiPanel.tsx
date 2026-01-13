@@ -7,7 +7,7 @@
  * YouTube 영상을 직접 시청하도록 명령합니다.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Smartphone,
   Play,
