@@ -83,6 +83,9 @@ const youtubeRouter = require('./api/routes/youtube');
 const kernelRouter = require('./api/routes/kernel');
 const { initKernelRouter } = require('./api/routes/kernel');
 
+// Setup API Router (초기 설정 및 명령 템플릿)
+const setupRouter = require('./api/routes/setup');
+
 const H264StreamServer = require('./stream/h264-stream');
 
 // ==================== Laixi Adapter (Device Control) ====================
@@ -139,11 +142,39 @@ const dashboardHandler = new DashboardHandler({
 // ==================== Express 서버 ====================
 const app = express();
 
+// ==================== Localhost 전용 모드 (설치 환경) ====================
+const LOCALHOST_ONLY = process.env.LOCALHOST_ONLY === 'true';
+const AUTO_OPEN_DASHBOARD = process.env.AUTO_OPEN_DASHBOARD !== 'false';
+
+if (LOCALHOST_ONLY) {
+    logger.info('[Gateway] 🔒 Localhost 전용 모드 활성화');
+}
+
 // 미들웨어
 app.use(helmet({
     contentSecurityPolicy: false, // Iframe 허용
     crossOriginEmbedderPolicy: false
 }));
+
+// Localhost 제한 미들웨어 (설치 환경에서만)
+if (LOCALHOST_ONLY) {
+    app.use((req, res, next) => {
+        const clientIP = req.ip || req.connection.remoteAddress;
+        const isLocalhost = clientIP === '127.0.0.1'
+            || clientIP === '::1'
+            || clientIP === '::ffff:127.0.0.1'
+            || clientIP === 'localhost';
+
+        if (!isLocalhost) {
+            logger.warn(`[Security] 외부 접근 차단: ${clientIP}`);
+            return res.status(403).json({
+                error: 'Access Denied',
+                message: 'This server only accepts localhost connections'
+            });
+        }
+        next();
+    });
+}
 
 // CORS 설정 (통합 Control Room)
 app.use(cors({
@@ -215,6 +246,9 @@ app.use('/api/chrome', chromeRouter);
 
 // OpenAI Integration
 app.use('/api/ai', aiRouter);
+
+// Setup API (초기 설정 및 명령 템플릿 - localhost 전용)
+app.use('/api/setup', setupRouter);
 
 // React SPA 라우팅 (클라이언트 사이드 라우팅 지원)
 const fs = require('fs');
@@ -476,6 +510,21 @@ async function start() {
 
         server.listen(port, () => {
             logger.info(`[Gateway] 🚀 서버 시작: http://0.0.0.0:${port}`);
+
+            // 대시보드 자동 열기 (설치 환경에서만)
+            if (AUTO_OPEN_DASHBOARD && process.platform === 'win32') {
+                const dashboardUrl = `http://localhost:${port}`;
+                setTimeout(() => {
+                    const { exec } = require('child_process');
+                    exec(`start "" "${dashboardUrl}"`, (err) => {
+                        if (err) {
+                            logger.warn('[Gateway] 브라우저 자동 열기 실패:', err.message);
+                        } else {
+                            logger.info(`[Gateway] 🌐 대시보드 열림: ${dashboardUrl}`);
+                        }
+                    });
+                }, 1500); // 1.5초 딜레이 (서버 완전 시작 대기)
+            }
         });
 
         // 7. 완료 메시지

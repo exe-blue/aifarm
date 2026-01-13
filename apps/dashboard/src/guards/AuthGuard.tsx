@@ -1,15 +1,36 @@
 /**
  * AuthGuard - 인증 및 권한 기반 접근 제어
- * 
+ *
  * 기능:
  * - 미인증 사용자: /auth/login으로 리다이렉트
  * - 권한 부족: /unauthorized로 리다이렉트 (또는 커스텀 경로)
  * - 최소 등급/역할 요구사항 설정 가능
+ * - Localhost 모드: localhost 접속 시 인증 우회
  */
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import type { ReactNode } from 'react';
 import type { MembershipTier, AdminRole } from '@/lib/auth/types';
+
+// ============================================
+// Localhost 모드 감지
+// ============================================
+
+/**
+ * Localhost 환경인지 확인
+ * - 환경 변수 VITE_LOCALHOST_MODE=true
+ * - 또는 hostname이 localhost/127.0.0.1
+ */
+export function isLocalhostMode(): boolean {
+  // 환경 변수로 명시적 활성화
+  if (import.meta.env.VITE_LOCALHOST_MODE === 'true') {
+    return true;
+  }
+
+  // URL 기반 감지
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
 
 // ============================================
 // Types
@@ -48,7 +69,7 @@ const ROLE_ORDER: Record<AdminRole, number> = {
 // AuthGuard Component
 // ============================================
 
-export function AuthGuard({ 
+export function AuthGuard({
   children,
   requiredTier,
   requiredRole,
@@ -57,6 +78,11 @@ export function AuthGuard({
 }: AuthGuardProps) {
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
+
+  // Localhost 모드: 인증 우회 (로컬 대시보드 전용)
+  if (isLocalhostMode()) {
+    return <>{children}</>;
+  }
 
   // 미인증 사용자
   if (!isAuthenticated || !user) {

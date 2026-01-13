@@ -26,6 +26,10 @@ import {
   HistoryPanel,
 } from '@/components/market';
 
+// Setup 패널 (localhost 전용)
+import { SetupPanel } from '@/components/setup';
+import { isLocalhostMode } from '@/guards/AuthGuard';
+
 export default function DashboardPage() {
   return (
     <NodeProvider wsEndpoint="ws://localhost:3100/ws/dashboard">
@@ -184,6 +188,11 @@ function ConsumeContent() {
       {/* Main Content */}
       <main className="flex-1 relative w-full overflow-y-auto z-20 pt-24 pb-8 px-4 md:px-6">
         <div className="max-w-7xl mx-auto flex flex-col gap-4">
+
+          {/* 0. 초기 설정 패널 (localhost에서만 표시) */}
+          {isLocalhostMode() && (
+            <SetupPanel isDark={isDark} />
+          )}
 
           {/* 1. 노드(PC) + 디바이스(스마트폰) 상태 */}
           <NodeStatusBar
