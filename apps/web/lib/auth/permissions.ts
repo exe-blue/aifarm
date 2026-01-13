@@ -27,7 +27,7 @@ export type { Action, Resource } from './types';
  * - 관리자(admin): 모든 권한
  */
 export const PERMISSION_MATRIX: PermissionMatrix = {
-  // 철학 라이브러리 - 모든 회원 조회 가능
+  // 철학 라이브러리 - 비회원도 조회 가능
   philosophy: {
     view: 'all',
     create: ['admin'],
@@ -35,65 +35,65 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     delete: ['admin'],
   },
 
-  // 대시보드 - 회원 이상 조회
+  // 대시보드 - 비회원도 조회 가능
   dashboard: {
-    view: ['member'],
+    view: 'all',
     create: 'none',
     edit: ['admin'],
     delete: ['admin'],
   },
 
-  // 모니터링 - 회원 이상 조회
+  // 모니터링 - 비회원도 조회 가능
   monitoring: {
-    view: ['member'],
+    view: 'all',
     create: 'none',
     edit: ['admin'],
     delete: ['admin'],
   },
 
-  // 히스토리 - 회원 이상 조회
+  // 히스토리 - 비회원도 조회 가능
   history: {
-    view: ['member'],
+    view: 'all',
     create: 'none',
     edit: ['admin'],
     delete: ['admin'],
   },
 
-  // 커맨드 - 회원 이상
+  // 커맨드 - 비회원도 조회 가능, 생성은 회원 이상
   command: {
-    view: ['member'],
+    view: 'all',
     create: ['member'],
     edit: ['admin'],
     delete: ['admin'],
   },
 
-  // 폼 - 회원 이상 조회 및 등록
+  // 폼 - 비회원도 조회 가능, 생성은 회원 이상
   forms: {
-    view: ['member'],
+    view: 'all',
     create: ['member'],
     edit: ['admin'],
     delete: ['admin'],
   },
 
-  // 웜홀 - 회원 이상 조회
+  // 웜홀 - 비회원도 조회 가능
   wormholes: {
-    view: ['member'],
+    view: 'all',
     create: 'none',
     edit: ['admin'],
     delete: ['admin'],
   },
 
-  // 디바이스 - 회원 이상 조회
+  // 디바이스 - 비회원도 조회 가능, 생성은 회원 이상
   devices: {
-    view: ['member'],
+    view: 'all',
     create: ['member'],
     edit: ['admin'],
     delete: ['admin'],
   },
 
-  // 콘텐츠 - 회원 이상 조회, 회원 등록
+  // 콘텐츠 - 비회원도 조회 가능, 생성은 회원 이상
   content: {
-    view: ['member'],
+    view: 'all',
     create: ['member'],
     edit: ['admin'],
     delete: ['admin'],
@@ -115,9 +115,17 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     delete: ['admin'],
   },
 
-  // Work (영상 등록) - 회원 이상
+  // Work (영상 등록) - 비회원도 조회 가능, 생성은 회원 이상
   work: {
-    view: ['member'],
+    view: 'all',
+    create: ['member'],
+    edit: ['admin'],
+    delete: ['admin'],
+  },
+
+  // Channel (채널 관리) - 비회원도 조회 가능, 생성은 회원 이상
+  channel: {
+    view: 'all',
     create: ['member'],
     edit: ['admin'],
     delete: ['admin'],

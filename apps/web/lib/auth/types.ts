@@ -64,6 +64,7 @@ export const ResourceSchema = z.enum([
   'members',       // 회원 관리
   'system',        // 시스템 설정
   'work',          // Work (영상 등록)
+  'channel',       // Channel (채널 관리)
 ]);
 export type Resource = z.infer<typeof ResourceSchema>;
 

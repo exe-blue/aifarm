@@ -3,9 +3,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { History, CheckCircle, XCircle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { History, CheckCircle, XCircle, Loader2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getWorkHistory, retryVideo } from '../actions';
 
 interface HistoryItem {
   id: string;
@@ -24,60 +25,47 @@ export function WorkHistoryPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  const fetchHistory = useCallback(async (page: number) => {
+    setIsLoading(true);
+    try {
+      const result = await getWorkHistory({ page, limit: 10 });
+
+      if (result.success && result.data) {
+        setHistory(result.data.items);
+        setTotalPages(result.data.totalPages);
+        setCurrentPage(result.data.currentPage);
+      } else {
+        console.error('Failed to fetch history:', result.error);
+        setHistory([]);
+      }
+    } catch {
+      console.error('Failed to fetch history');
+      setHistory([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchHistory(currentPage);
-  }, [currentPage]);
+  }, [currentPage, fetchHistory]);
 
-  const fetchHistory = async (page: number) => {
-    setIsLoading(true);
+  const handleRetry = async (itemId: string) => {
+    setRetryingId(itemId);
     try {
-      // TODO: Gateway API 연동
-      // const response = await fetch(`/api/v1/video/history?page=${page}&limit=10`);
-      // const data = await response.json();
-
-      // 임시 Mock 데이터
-      await new Promise((r) => setTimeout(r, 500));
-      setHistory([
-        {
-          id: '1',
-          videoId: 'dQw4w9WgXcQ',
-          title: 'Completed Video 1 - Full Watch Success',
-          thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
-          status: 'completed',
-          totalDevices: 150,
-          successCount: 148,
-          failCount: 2,
-          completedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-        },
-        {
-          id: '2',
-          videoId: 'jNQXAC9IVRw',
-          title: 'Completed Video 2 - Partial Success',
-          thumbnail: 'https://img.youtube.com/vi/jNQXAC9IVRw/mqdefault.jpg',
-          status: 'partial',
-          totalDevices: 150,
-          successCount: 120,
-          failCount: 30,
-          completedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        },
-        {
-          id: '3',
-          videoId: '9bZkp7q19f0',
-          title: 'Completed Video 3 - Failed Majority',
-          thumbnail: 'https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg',
-          status: 'failed',
-          totalDevices: 150,
-          successCount: 15,
-          failCount: 135,
-          completedAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-        },
-      ]);
-      setTotalPages(3);
+      const result = await retryVideo(itemId);
+      if (result.success) {
+        // 히스토리에서 해당 항목 제거 (대기열로 이동됨)
+        setHistory((prev) => prev.filter((item) => item.id !== itemId));
+      } else {
+        console.error('Failed to retry:', result.error);
+      }
     } catch {
-      console.error('Failed to fetch history');
+      console.error('Failed to retry video');
     } finally {
-      setIsLoading(false);
+      setRetryingId(null);
     }
   };
 
@@ -170,6 +158,9 @@ export function WorkHistoryPanel() {
               <th className="text-right px-4 py-3 text-sm font-medium text-neutral-400 hidden lg:table-cell">
                 Completed
               </th>
+              <th className="text-center px-4 py-3 text-sm font-medium text-neutral-400">
+                Action
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -238,6 +229,27 @@ export function WorkHistoryPanel() {
                   </td>
                   <td className="px-4 py-4 text-right text-sm text-neutral-500 hidden lg:table-cell">
                     {formatDate(item.completedAt)}
+                  </td>
+                  <td className="px-4 py-4 text-center">
+                    {item.status === 'failed' && (
+                      <button
+                        onClick={() => handleRetry(item.id)}
+                        disabled={retryingId === item.id}
+                        className={cn(
+                          "inline-flex items-center gap-1 px-3 py-1 rounded text-xs",
+                          "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20",
+                          "hover:bg-yellow-500/20 transition-colors",
+                          "disabled:opacity-50"
+                        )}
+                      >
+                        {retryingId === item.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-3 h-3" />
+                        )}
+                        Retry
+                      </button>
+                    )}
                   </td>
                 </tr>
               );

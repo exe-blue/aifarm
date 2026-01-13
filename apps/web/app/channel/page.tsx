@@ -13,6 +13,9 @@ import {
   Loader2, AlertCircle, CheckCircle, Rss, TrendingUp
 } from 'lucide-react';
 import { Header } from '@/components/header';
+import { GuestNotice } from '@/components/GuestNotice';
+import { ChannelHeroSection } from './components/ChannelHeroSection';
+import { ChannelStatsBar, DEFAULT_CHANNEL_STATS } from './components/ChannelStatsBar';
 
 // ============================================
 // Types
@@ -54,15 +57,17 @@ interface ChannelStats {
 // Main Page Component
 // ============================================
 
-export default function InfraPage() {
+export default function ChannelPage() {
   const [isDark] = useState(true);
   const [channels, setChannels] = useState<SubscribedChannel[]>([]);
   const [recentVideos, setRecentVideos] = useState<RecentVideo[]>([]);
   const [stats, setStats] = useState<ChannelStats>({ totalChannels: 0, totalVideos: 0, totalWatched: 0, todayWatched: 0 });
   const [selectedChannel, setSelectedChannel] = useState<SubscribedChannel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
   // 채널 추가 모달
   const [showAddModal, setShowAddModal] = useState(false);
   const [newChannelInput, setNewChannelInput] = useState('');
@@ -71,26 +76,38 @@ export default function InfraPage() {
   // 데이터 로드
   const loadData = useCallback(async () => {
     setIsLoading(true);
+    setIsLoadingStats(true);
     setError(null);
-    
+
     try {
       // 구독 채널 목록 로드
       const channelRes = await fetch('/api/youtube/subscribe');
       const channelData = await channelRes.json();
-      
-      if (channelData.success) {
-        setChannels(channelData.data || []);
-        setStats(prev => ({ ...prev, totalChannels: (channelData.data || []).length }));
+
+      // 인증 상태 확인 (401이면 미인증)
+      if (channelRes.status === 401) {
+        setIsAuthenticated(false);
+        setChannels([]);
+      } else {
+        setIsAuthenticated(true);
+        if (channelData.success) {
+          setChannels(channelData.data || []);
+          setStats((prev) => ({
+            ...prev,
+            totalChannels: (channelData.data || []).length,
+          }));
+        }
       }
-      
+
       // TODO: 최근 영상 로드 (API 구현 필요)
       // 임시 데이터
       setRecentVideos([]);
-      
-    } catch (err) {
+    } catch {
       setError('데이터를 불러오는 중 오류가 발생했습니다');
+      setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
+      setIsLoadingStats(false);
     }
   }, []);
 
@@ -191,34 +208,64 @@ export default function InfraPage() {
       {/* 메인 콘텐츠 */}
       <main className="pt-24 pb-12 px-4 md:px-6">
         <div className="max-w-7xl mx-auto">
-          
+          {/* 히어로 섹션 */}
+          <ChannelHeroSection />
+
+          {/* 통계 바 */}
+          <ChannelStatsBar stats={stats} isLoading={isLoadingStats} />
+
+          {/* 채널 추가 섹션 (Input) */}
+          <section className="mb-8">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Plus className="w-5 h-5 text-[#FFCC00]" />
+              채널 구독
+              <span className="text-xs text-neutral-500 font-normal ml-2">
+                (Input)
+              </span>
+            </h2>
+
+            {isAuthenticated === null ? (
+              // 로딩 중
+              <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+                <div className="animate-pulse h-12 bg-neutral-800 rounded" />
+              </div>
+            ) : isAuthenticated ? (
+              // 인증된 사용자
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-[#FFCC00] text-black font-bold rounded-lg hover:bg-yellow-400 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  채널 추가
+                </button>
+                <button
+                  onClick={loadData}
+                  disabled={isLoading}
+                  className={`p-3 rounded-lg transition-colors ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'}`}
+                >
+                  <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+            ) : (
+              // 비회원
+              <GuestNotice action="채널 구독" />
+            )}
+          </section>
+
           {/* 페이지 타이틀 */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-3">
-                <Tv className="w-8 h-8 text-[#FFCC00]" />
+              <h2 className="text-2xl font-bold flex items-center gap-3">
+                <Tv className="w-7 h-7 text-[#FFCC00]" />
                 채널 편성표
-              </h1>
+                <span className="text-xs text-neutral-500 font-normal ml-2">
+                  (Record & Display)
+                </span>
+              </h2>
               <p className={`mt-2 ${isDark ? 'text-neutral-500' : 'text-neutral-600'}`}>
                 연동된 YouTube 채널과 영상을 관리합니다
               </p>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <button
-                onClick={loadData}
-                disabled={isLoading}
-                className={`p-2 rounded-lg transition-colors ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'}`}
-              >
-                <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-              </button>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#FFCC00] text-black font-bold rounded-lg hover:bg-yellow-400 transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                채널 추가
-              </button>
             </div>
           </div>
 

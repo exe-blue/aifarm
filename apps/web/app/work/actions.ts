@@ -207,7 +207,13 @@ export async function registerVideo(input: RegisterVideoInput): Promise<{
     }
 
     // Gateway에 디스패치 트리거 (비동기)
-    triggerDispatch(data.id).catch(console.error);
+    triggerDispatch(data.id, {
+      videoId: input.videoId,
+      title: input.title,
+      thumbnail: input.thumbnail,
+      channelTitle: input.channelTitle,
+      duration: input.duration,
+    }).catch(console.error);
 
     revalidatePath('/work');
     return { success: true, data: { id: data.id } };
@@ -218,14 +224,32 @@ export async function registerVideo(input: RegisterVideoInput): Promise<{
 }
 
 // 디바이스 디스패치 트리거 (Gateway API 호출)
-async function triggerDispatch(queueItemId: string) {
-  const gatewayUrl = process.env.GATEWAY_URL || 'http://localhost:3001';
+async function triggerDispatch(
+  queueItemId: string,
+  videoInfo: { videoId: string; title: string; thumbnail?: string; channelTitle?: string; duration?: string }
+) {
+  const gatewayUrl = process.env.GATEWAY_URL || 'http://localhost:3100';
   try {
-    await fetch(`${gatewayUrl}/api/v1/dispatch/trigger`, {
+    const response = await fetch(`${gatewayUrl}/api/v1/video/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ queueItemId }),
+      body: JSON.stringify({
+        videoId: videoInfo.videoId,
+        title: videoInfo.title,
+        thumbnail: videoInfo.thumbnail,
+        channelTitle: videoInfo.channelTitle,
+        duration: videoInfo.duration,
+        searchMethod: 'title',
+        targetDevicePercent: 1.0,
+      }),
     });
+
+    if (!response.ok) {
+      console.error('Gateway dispatch failed:', await response.text());
+    } else {
+      const result = await response.json();
+      console.log('Gateway dispatch success:', result);
+    }
   } catch (err) {
     console.error('Failed to trigger dispatch:', err);
   }

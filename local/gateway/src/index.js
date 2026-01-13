@@ -79,6 +79,9 @@ const { initializeChromeRoutes } = require('./api/routes/chrome');
 // YouTube API Router
 const youtubeRouter = require('./api/routes/youtube');
 
+// Video Queue API Router (Work 페이지 연동)
+const videoRouter = require('./api/routes/video');
+
 // Kernel API Router (YouTube app automation)
 const kernelRouter = require('./api/routes/kernel');
 const { initKernelRouter } = require('./api/routes/kernel');
@@ -237,6 +240,9 @@ app.use('/stream', streamRouter);
 
 // YouTube API
 app.use('/api/youtube', youtubeRouter);
+
+// Video Queue API (Work 페이지 연동)
+app.use('/api/v1/video', videoRouter);
 
 // Kernel API (placeholder for Chrome automation)
 app.use('/api/kernel', kernelRouter);
