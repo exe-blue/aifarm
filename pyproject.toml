@@ -67,6 +67,7 @@ exclude = [
     "local/",
     "scripts/",
     "autox-scripts/",
+    "tests/",
 ]
 
 [tool.ruff.lint]
