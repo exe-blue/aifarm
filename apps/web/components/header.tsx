@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { Menu, X } from "lucide-react"
 
 const MENU_ITEMS = [
-  { id: "work", label: "WORK", href: "#" },
+  { id: "work", label: "WORK", href: "/work" },
   { id: "channel", label: "CHANNEL", href: "/channel" },
   { id: "news", label: "NEWS", href: "/news" },
   { id: "play", label: "PLAY", href: "#" },

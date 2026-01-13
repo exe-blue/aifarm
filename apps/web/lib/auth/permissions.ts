@@ -19,101 +19,108 @@ export type { Action, Resource } from './types';
 
 /**
  * 리소스별 권한 매트릭스
- * 
+ *
  * 권한 규칙:
- * - 준회원(associate): 철학 라이브러리만 조회
- * - 정회원(regular): 전체 메뉴 조회
- * - 특별회원(special): 조회 + 등록
- * - 관리자(admin): 조회 + 등록 + 수정
- * - 소유자(owner): 모든 권한 (삭제, 회원등급변경 포함)
+ * - 비회원: 인증 필요한 모든 리소스 접근 불가
+ * - 컨펌전 회원(pending): 승인 대기 중, 제한된 접근
+ * - 회원(member): 조회 + 등록
+ * - 관리자(admin): 모든 권한
  */
 export const PERMISSION_MATRIX: PermissionMatrix = {
   // 철학 라이브러리 - 모든 회원 조회 가능
   philosophy: {
     view: 'all',
-    create: ['admin', 'owner'],
-    edit: ['admin', 'owner'],
-    delete: ['owner'],
+    create: ['admin'],
+    edit: ['admin'],
+    delete: ['admin'],
   },
-  
-  // 대시보드 - 정회원 이상 조회
+
+  // 대시보드 - 회원 이상 조회
   dashboard: {
-    view: ['regular', 'special'],
+    view: ['member'],
     create: 'none',
-    edit: ['admin', 'owner'],
-    delete: ['owner'],
+    edit: ['admin'],
+    delete: ['admin'],
   },
-  
-  // 모니터링 - 정회원 이상 조회
+
+  // 모니터링 - 회원 이상 조회
   monitoring: {
-    view: ['regular', 'special'],
+    view: ['member'],
     create: 'none',
-    edit: ['admin', 'owner'],
-    delete: ['owner'],
+    edit: ['admin'],
+    delete: ['admin'],
   },
-  
-  // 히스토리 - 정회원 이상 조회
+
+  // 히스토리 - 회원 이상 조회
   history: {
-    view: ['regular', 'special'],
+    view: ['member'],
     create: 'none',
-    edit: ['admin', 'owner'],
-    delete: ['owner'],
+    edit: ['admin'],
+    delete: ['admin'],
   },
-  
-  // 커맨드 - 특별회원 이상
+
+  // 커맨드 - 회원 이상
   command: {
-    view: ['special'],
-    create: ['special'],
-    edit: ['admin', 'owner'],
-    delete: ['owner'],
+    view: ['member'],
+    create: ['member'],
+    edit: ['admin'],
+    delete: ['admin'],
   },
-  
-  // 폼 - 정회원 이상 조회, 특별회원 이상 등록
+
+  // 폼 - 회원 이상 조회 및 등록
   forms: {
-    view: ['regular', 'special'],
-    create: ['special'],
-    edit: ['admin', 'owner'],
-    delete: ['owner'],
+    view: ['member'],
+    create: ['member'],
+    edit: ['admin'],
+    delete: ['admin'],
   },
-  
-  // 웜홀 - 정회원 이상 조회
+
+  // 웜홀 - 회원 이상 조회
   wormholes: {
-    view: ['regular', 'special'],
+    view: ['member'],
     create: 'none',
-    edit: ['admin', 'owner'],
-    delete: ['owner'],
+    edit: ['admin'],
+    delete: ['admin'],
   },
-  
-  // 디바이스 - 정회원 이상 조회
+
+  // 디바이스 - 회원 이상 조회
   devices: {
-    view: ['regular', 'special'],
-    create: ['special'],
-    edit: ['admin', 'owner'],
-    delete: ['owner'],
+    view: ['member'],
+    create: ['member'],
+    edit: ['admin'],
+    delete: ['admin'],
   },
-  
-  // 콘텐츠 - 정회원 이상 조회, 특별회원 등록
+
+  // 콘텐츠 - 회원 이상 조회, 회원 등록
   content: {
-    view: ['regular', 'special'],
-    create: ['special'],
-    edit: ['admin', 'owner'],
-    delete: ['owner'],
+    view: ['member'],
+    create: ['member'],
+    edit: ['admin'],
+    delete: ['admin'],
   },
-  
-  // 회원 관리 - 관리자 조회, 소유자만 수정
+
+  // 회원 관리 - 관리자만
   members: {
-    view: ['admin', 'owner'],
-    create: ['owner'],
-    edit: ['owner'],
-    delete: ['owner'],
+    view: ['admin'],
+    create: ['admin'],
+    edit: ['admin'],
+    delete: ['admin'],
   },
-  
-  // 시스템 설정 - 소유자만
+
+  // 시스템 설정 - 관리자만
   system: {
-    view: ['admin', 'owner'],
-    create: ['owner'],
-    edit: ['owner'],
-    delete: ['owner'],
+    view: ['admin'],
+    create: ['admin'],
+    edit: ['admin'],
+    delete: ['admin'],
+  },
+
+  // Work (영상 등록) - 회원 이상
+  work: {
+    view: ['member'],
+    create: ['member'],
+    edit: ['admin'],
+    delete: ['admin'],
   },
 };
 
@@ -123,7 +130,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
 
 /**
  * 권한 체크 메인 함수
- * 
+ *
  * @param tier - 사용자 회원 등급 (일반 사용자)
  * @param adminRole - 관리자 역할
  * @param action - 수행하려는 액션 (view, create, edit, delete)
@@ -136,59 +143,43 @@ export function checkPermission(
   action: Action,
   resource: Resource
 ): boolean {
-  // 소유자: 모든 권한
-  if (adminRole === 'owner') {
-    return true;
-  }
-  
-  // 관리자: 삭제와 회원관리 제외 모든 권한
+  // 관리자: 모든 권한
   if (adminRole === 'admin') {
-    if (action === 'delete') {
-      return false;
-    }
-    if (resource === 'members' && action !== 'view') {
-      return false;
-    }
     return true;
   }
-  
-  // viewer (기존 호환): 정회원과 동일하게 처리
-  if (adminRole === 'viewer') {
-    return action === 'view' && resource !== 'members';
-  }
-  
-  // pending: 권한 없음
-  if (adminRole === 'pending') {
+
+  // 컨펌전 회원(pending): 권한 없음
+  if (tier === 'pending') {
     return false;
   }
-  
+
   // 일반 사용자 권한 체크
   const resourcePermission = PERMISSION_MATRIX[resource];
   if (!resourcePermission) {
     return false;
   }
-  
+
   const allowedRoles = resourcePermission[action];
-  
+
   // 'none'인 경우 일반 사용자 불가
   if (allowedRoles === 'none') {
     return false;
   }
-  
+
   // 'all'인 경우 모든 인증된 사용자 허용
   if (allowedRoles === 'all') {
     return tier !== null || adminRole !== null;
   }
-  
+
   // 배열인 경우 tier 또는 adminRole이 포함되어 있는지 확인
   if (tier && (allowedRoles as string[]).includes(tier)) {
     return true;
   }
-  
+
   if (adminRole && (allowedRoles as string[]).includes(adminRole)) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -215,7 +206,7 @@ export function checkMultiplePermissions(
   permissions: UserPermissions,
   checks: Array<{ action: Action; resource: Resource }>
 ): boolean[] {
-  return checks.map(({ action, resource }) => 
+  return checks.map(({ action, resource }) =>
     hasPermission(permissions, action, resource)
   );
 }
@@ -256,7 +247,7 @@ export function filterMenuByPermissions(
   menuItems: AdminMenuItem[],
   permissions: UserPermissions
 ): AdminMenuItem[] {
-  return menuItems.filter(item => 
+  return menuItems.filter(item =>
     hasPermission(permissions, 'view', item.resource)
   );
 }
@@ -266,16 +257,12 @@ export function filterMenuByPermissions(
 // ============================================
 
 const TIER_ORDER: Record<MembershipTier, number> = {
-  associate: 1,
-  regular: 2,
-  special: 3,
+  pending: 0,
+  member: 1,
 };
 
 const ROLE_ORDER: Record<AdminRole, number> = {
-  pending: 0,
-  viewer: 1,
-  admin: 2,
-  owner: 3,
+  admin: 1,
 };
 
 /**

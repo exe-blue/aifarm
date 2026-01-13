@@ -9,21 +9,17 @@ import { z } from 'zod';
 
 /**
  * 일반 사용자 회원 등급
- * - associate: 준회원 (철학 라이브러리만 조회 가능)
- * - regular: 정회원 (전체 메뉴 조회 가능)
- * - special: 특별회원 (등록 가능)
+ * - pending: 컨펌전 회원 (가입 후 승인 대기)
+ * - member: 회원 (승인된 일반 회원)
  */
-export const MembershipTierSchema = z.enum(['associate', 'regular', 'special']);
+export const MembershipTierSchema = z.enum(['pending', 'member']);
 export type MembershipTier = z.infer<typeof MembershipTierSchema>;
 
 /**
  * 관리자 역할
- * - pending: 승인 대기
- * - viewer: 읽기 전용 (기존 호환)
- * - admin: 관리자 (입력/수정 가능)
- * - owner: 소유자 (삭제/회원등급변경 가능)
+ * - admin: 관리자 (모든 권한)
  */
-export const AdminRoleSchema = z.enum(['pending', 'viewer', 'admin', 'owner']);
+export const AdminRoleSchema = z.enum(['admin']);
 export type AdminRole = z.infer<typeof AdminRoleSchema>;
 
 /**
@@ -67,6 +63,7 @@ export const ResourceSchema = z.enum([
   'content',       // 콘텐츠 (채널, 위협, 경제)
   'members',       // 회원 관리
   'system',        // 시스템 설정
+  'work',          // Work (영상 등록)
 ]);
 export type Resource = z.infer<typeof ResourceSchema>;
 
@@ -137,16 +134,12 @@ export const DEFAULT_PERMISSIONS: UserPermissions = {
 // ============================================
 
 export const TIER_DISPLAY_NAMES: Record<MembershipTier, string> = {
-  associate: '준회원',
-  regular: '정회원',
-  special: '특별회원',
+  pending: '컨펌전 회원',
+  member: '회원',
 };
 
 export const ROLE_DISPLAY_NAMES: Record<AdminRole, string> = {
-  pending: '승인 대기',
-  viewer: '뷰어',
   admin: '관리자',
-  owner: '소유자',
 };
 
 /**
