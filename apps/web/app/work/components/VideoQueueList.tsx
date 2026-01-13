@@ -3,9 +3,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Clock, Play, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Clock, Play, CheckCircle, XCircle, Loader2, RefreshCw, Ban } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getVideoQueue, cancelVideo } from '../actions';
 
 interface QueueItem {
   id: string;
@@ -48,46 +49,48 @@ const STATUS_CONFIG = {
 export function VideoQueueList() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const fetchQueue = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await getVideoQueue();
+
+      if (result.success && result.data) {
+        setQueue(result.data);
+      } else {
+        console.error('Failed to fetch queue:', result.error);
+        setQueue([]);
+      }
+    } catch {
+      console.error('Failed to fetch queue');
+      setQueue([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchQueue();
-  }, []);
+    // 30초마다 대기열 갱신
+    const interval = setInterval(fetchQueue, 30000);
+    return () => clearInterval(interval);
+  }, [fetchQueue]);
 
-  const fetchQueue = async () => {
-    setIsLoading(true);
+  const handleCancel = async (itemId: string) => {
+    setCancellingId(itemId);
     try {
-      // TODO: Gateway API 연동
-      // const response = await fetch('/api/v1/video/queue');
-      // const data = await response.json();
-
-      // 임시 Mock 데이터
-      await new Promise((r) => setTimeout(r, 500));
-      setQueue([
-        {
-          id: '1',
-          videoId: 'dQw4w9WgXcQ',
-          title: 'Sample Video 1 - Human Like Watching Test',
-          thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
-          status: 'processing',
-          targetDevices: 150,
-          completedDevices: 47,
-          createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-        },
-        {
-          id: '2',
-          videoId: 'jNQXAC9IVRw',
-          title: 'Sample Video 2 - Search By Title Test',
-          thumbnail: 'https://img.youtube.com/vi/jNQXAC9IVRw/mqdefault.jpg',
-          status: 'ready',
-          targetDevices: 150,
-          completedDevices: 0,
-          createdAt: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
-        },
-      ]);
+      const result = await cancelVideo(itemId);
+      if (result.success) {
+        // 대기열에서 제거
+        setQueue((prev) => prev.filter((item) => item.id !== itemId));
+      } else {
+        console.error('Failed to cancel:', result.error);
+      }
     } catch {
-      console.error('Failed to fetch queue');
+      console.error('Failed to cancel video');
     } finally {
-      setIsLoading(false);
+      setCancellingId(null);
     }
   };
 
@@ -208,6 +211,26 @@ export function VideoQueueList() {
                     </div>
                   </div>
                 </div>
+
+                {/* Cancel Button (only for ready status) */}
+                {item.status === 'ready' && (
+                  <button
+                    onClick={() => handleCancel(item.id)}
+                    disabled={cancellingId === item.id}
+                    className={cn(
+                      "p-2 rounded-lg border border-white/10 text-neutral-500",
+                      "hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400",
+                      "transition-colors disabled:opacity-50"
+                    )}
+                    title="Cancel"
+                  >
+                    {cancellingId === item.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Ban className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           );
