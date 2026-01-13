@@ -13,19 +13,17 @@ DoAi.Me 모니터링 라우터
 """
 
 import platform
-import sys
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from fastapi.responses import PlainTextResponse
 from loguru import logger
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from pydantic import BaseModel
 
 from shared.monitoring import (
-    ComponentHealth,
     HealthChecker,
     HealthStatus,
     check_disk,
