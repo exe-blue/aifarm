@@ -147,3 +147,4 @@ load_tests/
 shared/schemas/gateway.py
 supabase/migrations/20260111_user_memberships.sql
 .hintrc
+*.tsbuildinfo
