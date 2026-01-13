@@ -59,6 +59,16 @@ markers = [
 [tool.black]
 line-length = 100
 target-version = ['py311']
+extend-exclude = '''
+/(
+  archive
+  | local
+  | scripts
+  | autox-scripts
+  | tests
+  | services
+)/
+'''
 
 [tool.ruff]
 line-length = 100
