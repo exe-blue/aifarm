@@ -62,6 +62,14 @@ target-version = ['py311']
 
 [tool.ruff]
 line-length = 100
+exclude = [
+    "archive/",
+    "local/",
+    "scripts/",
+    "autox-scripts/",
+]
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I"]
 ignore = ["E501"]
 
