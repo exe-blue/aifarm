@@ -33,8 +33,12 @@ const COMMAND_TEMPLATES = {
         icon: 'smartphone',
         type: 'app',
         paths: [
-            'C:\\Program Files\\Laixi\\touping.exe',
-            'C:\\Program Files (x86)\\Laixi\\touping.exe',
+            // Gateway 설치 경로 (번들된 Laixi)
+            path.join(__dirname, '..', '..', '..', '..', 'laixi', 'Laixi.exe'),
+            'C:\\Program Files\\DoAi Gateway\\laixi\\Laixi.exe',
+            // 기존 Laixi 설치 경로
+            'C:\\Program Files\\Laixi\\Laixi.exe',
+            'C:\\Program Files (x86)\\Laixi\\Laixi.exe',
             process.env.LAIXI_EXE_PATH
         ].filter(Boolean)
     },

@@ -1,10 +1,10 @@
 // apps/web/app/work/components/RegisterVideoForm.tsx
-// YouTube 영상 등록 폼
+// YouTube 영상 등록 폼 - 자동 정보 로딩 지원
 
 'use client';
 
-import { useState } from 'react';
-import { Youtube, Loader2, CheckCircle, AlertCircle, Search } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Youtube, Loader2, CheckCircle, AlertCircle, Search, Calendar, Eye, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchVideoInfo as fetchVideoInfoAction, registerVideo } from '../actions';
 
@@ -14,6 +14,43 @@ interface VideoInfo {
   thumbnail: string;
   duration: string;
   channelTitle: string;
+  publishedAt?: string;
+  viewCount?: number;
+}
+
+// YouTube URL에서 video ID 추출
+function extractVideoId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+    /^([a-zA-Z0-9_-]{11})$/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+// 조회수 포맷팅
+function formatViewCount(count: number): string {
+  if (count >= 1000000) {
+    return `${(count / 1000000).toFixed(1)}M`;
+  }
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(1)}K`;
+  }
+  return count.toLocaleString();
+}
+
+// 날짜 포맷팅
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 export function RegisterVideoForm() {
@@ -23,32 +60,74 @@ export function RegisterVideoForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const lastFetchedUrl = useRef<string>('');
 
-  // 영상 정보 조회
-  const handleFetchVideoInfo = async () => {
-    if (!url.trim()) {
-      setError('Please enter a YouTube URL');
+  // 자동 영상 정보 조회 (debounced)
+  const fetchVideoInfoDebounced = useCallback(async (inputUrl: string) => {
+    const videoId = extractVideoId(inputUrl);
+    if (!videoId) {
+      setVideoInfo(null);
       return;
     }
 
+    // 이미 같은 URL을 조회했으면 스킵
+    if (lastFetchedUrl.current === inputUrl) return;
+    lastFetchedUrl.current = inputUrl;
+
     setIsLoading(true);
     setError(null);
-    setVideoInfo(null);
 
     try {
-      const result = await fetchVideoInfoAction(url);
+      const result = await fetchVideoInfoAction(inputUrl);
 
       if (!result.success || !result.data) {
         setError(result.error || 'Failed to fetch video info');
+        setVideoInfo(null);
         return;
       }
 
       setVideoInfo(result.data);
     } catch {
       setError('Failed to fetch video info');
+      setVideoInfo(null);
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  // URL 변경 시 자동 조회 (800ms debounce)
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    if (!url.trim()) {
+      setVideoInfo(null);
+      setError(null);
+      return;
+    }
+
+    debounceRef.current = setTimeout(() => {
+      fetchVideoInfoDebounced(url);
+    }, 800);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [url, fetchVideoInfoDebounced]);
+
+  // 수동 영상 정보 조회
+  const handleFetchVideoInfo = async () => {
+    if (!url.trim()) {
+      setError('Please enter a YouTube URL');
+      return;
+    }
+
+    lastFetchedUrl.current = ''; // 강제 재조회
+    await fetchVideoInfoDebounced(url);
   };
 
   // 영상 등록
@@ -93,6 +172,11 @@ export function RegisterVideoForm() {
         <div>
           <label className="block text-sm text-neutral-400 mb-2">
             YouTube URL
+            {isLoading && (
+              <span className="ml-2 text-xs text-[#FFCC00]">
+                Loading...
+              </span>
+            )}
           </label>
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -101,14 +185,22 @@ export function RegisterVideoForm() {
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://youtube.com/watch?v=..."
+                placeholder="https://youtube.com/watch?v=... (auto-loads)"
                 className={cn(
-                  "w-full pl-11 pr-4 py-3 bg-black/50 border rounded-lg",
+                  "w-full pl-11 pr-12 py-3 bg-black/50 border rounded-lg",
                   "text-white placeholder:text-neutral-600",
                   "focus:outline-none focus:ring-2 focus:ring-[#FFCC00]/50",
-                  error ? "border-red-500/50" : "border-white/10"
+                  error ? "border-red-500/50" : videoInfo ? "border-green-500/50" : "border-white/10"
                 )}
               />
+              {/* 로딩/성공 인디케이터 */}
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 text-[#FFCC00] animate-spin" />
+                ) : videoInfo ? (
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                ) : null}
+              </div>
             </div>
             <button
               type="button"
@@ -121,6 +213,7 @@ export function RegisterVideoForm() {
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 "flex items-center gap-2"
               )}
+              title="Refresh video info"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -136,27 +229,60 @@ export function RegisterVideoForm() {
               {error}
             </p>
           )}
+          {!error && !videoInfo && url && !isLoading && (
+            <p className="mt-2 text-xs text-neutral-500">
+              Paste a YouTube URL to automatically load video info
+            </p>
+          )}
         </div>
 
-        {/* Video Preview */}
+        {/* Video Preview - 개선된 UI */}
         {videoInfo && (
-          <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+          <div className="bg-black/30 rounded-lg p-4 border border-white/10 animate-in fade-in duration-300">
             <div className="flex gap-4">
-              <img
-                src={videoInfo.thumbnail}
-                alt={videoInfo.title}
-                className="w-32 h-20 object-cover rounded"
-              />
+              {/* 확대된 썸네일 */}
+              <div className="relative shrink-0">
+                <img
+                  src={videoInfo.thumbnail}
+                  alt={videoInfo.title}
+                  className="w-48 h-28 object-cover rounded-lg"
+                />
+                {/* 재생 시간 뱃지 */}
+                <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded font-mono">
+                  {videoInfo.duration}
+                </div>
+              </div>
+
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-white truncate">
+                {/* 영상 제목 */}
+                <h3 className="font-medium text-white line-clamp-2 leading-tight">
                   {videoInfo.title}
                 </h3>
-                <p className="text-sm text-neutral-400 mt-1">
+
+                {/* 채널명 */}
+                <p className="text-sm text-neutral-400 mt-2">
                   {videoInfo.channelTitle}
                 </p>
-                <p className="text-xs text-neutral-500 mt-1">
-                  Duration: {videoInfo.duration}
-                </p>
+
+                {/* 메타 정보 (업로드 날짜, 조회수) */}
+                <div className="flex items-center gap-4 mt-3 text-xs text-neutral-500">
+                  {videoInfo.publishedAt && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {formatDate(videoInfo.publishedAt)}
+                    </span>
+                  )}
+                  {videoInfo.viewCount !== undefined && (
+                    <span className="flex items-center gap-1">
+                      <Eye className="w-3 h-3" />
+                      {formatViewCount(videoInfo.viewCount)} views
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {videoInfo.duration}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -164,8 +290,8 @@ export function RegisterVideoForm() {
             <div className="mt-4 p-3 bg-[#FFCC00]/10 rounded border border-[#FFCC00]/20">
               <p className="text-sm text-[#FFCC00] flex items-center gap-2">
                 <Search className="w-4 h-4" />
-                <span>
-                  Devices will search by title: &quot;{videoInfo.title}&quot;
+                <span className="truncate">
+                  Devices will search by title: &quot;{videoInfo.title.slice(0, 50)}{videoInfo.title.length > 50 ? '...' : ''}&quot;
                 </span>
               </p>
               <p className="text-xs text-neutral-500 mt-1">

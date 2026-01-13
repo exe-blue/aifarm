@@ -268,6 +268,8 @@ interface QueueItem {
   targetDevices: number;
   completedDevices: number;
   createdAt: string;
+  channelTitle?: string;
+  source?: 'direct' | 'channel';
 }
 
 export async function getVideoQueue(): Promise<{
@@ -291,6 +293,8 @@ export async function getVideoQueue(): Promise<{
         youtube_video_id,
         title,
         thumbnail_url,
+        channel_title,
+        source,
         status,
         target_device_percent,
         created_at
@@ -332,6 +336,8 @@ export async function getVideoQueue(): Promise<{
           targetDevices,
           completedDevices: completedCount || 0,
           createdAt: item.created_at,
+          channelTitle: item.channel_title,
+          source: item.source as 'direct' | 'channel' | undefined,
         };
       })
     );
@@ -362,6 +368,8 @@ interface HistoryItem {
 interface GetHistoryOptions {
   page?: number;
   limit?: number;
+  statusFilter?: 'completed' | 'partial' | 'failed';
+  sourceFilter?: 'direct' | 'channel';
 }
 
 export async function getWorkHistory(options: GetHistoryOptions = {}): Promise<{
@@ -384,20 +392,29 @@ export async function getWorkHistory(options: GetHistoryOptions = {}): Promise<{
   const offset = (page - 1) * limit;
 
   try {
-    // 완료된 영상 조회 (completed 또는 failed)
-    const { data: historyItems, error, count } = await supabase
+    // 기본 쿼리 구성
+    let query = supabase
       .from('video_queue')
       .select(`
         id,
         youtube_video_id,
         title,
         thumbnail_url,
+        channel_title,
+        source,
         status,
         completed_at,
         created_at
       `, { count: 'exact' })
-      .in('status', ['completed', 'failed'])
-      .eq('source', 'direct')
+      .in('status', ['completed', 'failed']);
+
+    // 소스 필터 적용
+    if (options.sourceFilter) {
+      query = query.eq('source', options.sourceFilter);
+    }
+
+    // 정렬 및 페이지네이션
+    const { data: historyItems, error, count } = await query
       .order('completed_at', { ascending: false, nullsFirst: false })
       .range(offset, offset + limit - 1);
 
@@ -493,6 +510,107 @@ export async function cancelVideo(queueItemId: string): Promise<{
 }
 
 // ============================================================
+// 실시간 로그 조회
+// ============================================================
+
+interface DeviceLog {
+  deviceId: string;
+  deviceName: string;
+  status: 'waiting' | 'searching' | 'ad_skip' | 'watching' | 'liking' | 'commenting' | 'completed' | 'failed';
+  progress?: number;
+  watchTime?: number;
+  message?: string;
+  updatedAt: string;
+}
+
+export async function getRealtimeLogs(queueItemId: string): Promise<{
+  success: boolean;
+  data?: DeviceLog[];
+  error?: string;
+}> {
+  const auth = await checkWorkAuth();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error || 'Unauthorized' };
+  }
+
+  const supabase = await createClient();
+
+  try {
+    // 최근 실행 로그 조회 (최근 20개)
+    const { data: logs, error } = await supabase
+      .from('execution_logs')
+      .select(`
+        id,
+        device_id,
+        status,
+        action_type,
+        watch_time,
+        progress,
+        message,
+        created_at,
+        devices (
+          name,
+          device_name
+        )
+      `)
+      .eq('queue_item_id', queueItemId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error('Failed to fetch logs:', error);
+      return { success: false, error: 'Failed to fetch logs' };
+    }
+
+    // 디바이스별 최신 로그만 추출
+    const deviceMap = new Map<string, DeviceLog>();
+
+    for (const log of logs || []) {
+      if (deviceMap.has(log.device_id)) continue;
+
+      // action_type을 DeviceLog status로 매핑
+      let deviceStatus: DeviceLog['status'] = 'waiting';
+      switch (log.action_type) {
+        case 'search':
+          deviceStatus = 'searching';
+          break;
+        case 'ad_skip':
+          deviceStatus = 'ad_skip';
+          break;
+        case 'watch':
+        case 'watching':
+          deviceStatus = 'watching';
+          break;
+        case 'like':
+          deviceStatus = 'liking';
+          break;
+        case 'comment':
+          deviceStatus = 'commenting';
+          break;
+        default:
+          deviceStatus = log.status === 'success' ? 'completed' : log.status === 'failed' ? 'failed' : 'waiting';
+      }
+
+      const deviceData = log.devices as { name?: string; device_name?: string } | null;
+      deviceMap.set(log.device_id, {
+        deviceId: log.device_id,
+        deviceName: deviceData?.device_name || deviceData?.name || `Device ${log.device_id.slice(0, 8)}`,
+        status: deviceStatus,
+        progress: log.progress,
+        watchTime: log.watch_time,
+        message: log.message,
+        updatedAt: log.created_at,
+      });
+    }
+
+    return { success: true, data: Array.from(deviceMap.values()) };
+  } catch (err) {
+    console.error('Get realtime logs error:', err);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+// ============================================================
 // 영상 재시도
 // ============================================================
 
@@ -531,6 +649,69 @@ export async function retryVideo(queueItemId: string): Promise<{
     return { success: true };
   } catch (err) {
     console.error('Retry video error:', err);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+// ============================================================
+// 스크린샷 조회
+// ============================================================
+
+interface Screenshot {
+  id: string;
+  deviceName: string;
+  imageUrl: string;
+  capturedAt: string;
+}
+
+export async function getScreenshots(queueItemId: string): Promise<{
+  success: boolean;
+  data?: Screenshot[];
+  error?: string;
+}> {
+  const auth = await checkWorkAuth();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error || 'Unauthorized' };
+  }
+
+  const supabase = await createClient();
+
+  try {
+    // 해당 영상의 스크린샷 조회
+    const { data: screenshots, error } = await supabase
+      .from('execution_screenshots')
+      .select(`
+        id,
+        device_id,
+        image_url,
+        captured_at,
+        devices (
+          name,
+          device_name
+        )
+      `)
+      .eq('queue_item_id', queueItemId)
+      .order('captured_at', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error('Failed to fetch screenshots:', error);
+      return { success: false, error: 'Failed to fetch screenshots' };
+    }
+
+    const formattedScreenshots: Screenshot[] = (screenshots || []).map((s) => {
+      const deviceData = s.devices as { name?: string; device_name?: string } | null;
+      return {
+        id: s.id,
+        deviceName: deviceData?.device_name || deviceData?.name || `Device ${s.device_id.slice(0, 8)}`,
+        imageUrl: s.image_url,
+        capturedAt: s.captured_at,
+      };
+    });
+
+    return { success: true, data: formattedScreenshots };
+  } catch (err) {
+    console.error('Get screenshots error:', err);
     return { success: false, error: 'Internal server error' };
   }
 }
